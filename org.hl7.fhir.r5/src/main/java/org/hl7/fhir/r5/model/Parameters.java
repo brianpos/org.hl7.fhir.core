@@ -1512,7 +1512,14 @@ public String toString() {
     }
     return s;
   }
+  
+  
+  public boolean hasValuePrimitive() {
+    return hasValue() && getValue() instanceof PrimitiveType<?>;
+  }
+
 // end addition
+
   }
 
     /**
@@ -1722,6 +1729,11 @@ public String toString() {
     return this;
   }
 
+  public Parameters addParameter(String name, int i) {
+    addParameter().setName(name).setValue(new IntegerType(i));
+    return this;
+  }
+
   public Parameters addParameter(String name, String s) {
     if (s != null)
       addParameter().setName(name).setValue(new StringType(s));
@@ -1854,6 +1866,18 @@ public String toString() {
 
   public void clearParameters(String name) {
     getParameter().removeIf(p -> name.equals(p.getName()));  
+  }
+
+  public void addParameters(Parameters expParameters) {
+    addParameters(expParameters.getParameter());    
+  }
+
+  private void addParameters(List<ParametersParameterComponent> parameters) {
+    for (ParametersParameterComponent p : parameters) {
+      if (!hasParameter(p.getName())) {
+        addParameter(p);
+      }
+    }
   }
 
   // end addition

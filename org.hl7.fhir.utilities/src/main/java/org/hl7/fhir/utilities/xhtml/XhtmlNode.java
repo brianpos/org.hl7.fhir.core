@@ -626,6 +626,9 @@ public class XhtmlNode extends XhtmlFluent implements IBaseXhtml {
 
   @Override
   public String toString() {
+    if (nodeType == null) {
+      return super.toString();
+    }
     switch (nodeType) {
     case Document: 
     case Element:
@@ -783,11 +786,6 @@ public class XhtmlNode extends XhtmlFluent implements IBaseXhtml {
     return setAttribute("colspan", Integer.toString(n));
   }
   
-  // differs from tx because it returns the owner node, not the created text
-  public XhtmlNode txN(String cnt) {
-    addText(cnt);
-    return this;
-  }
 
 
   @Override
@@ -937,6 +935,68 @@ public class XhtmlNode extends XhtmlFluent implements IBaseXhtml {
       x.copyAllContent(t);
     }
     return x;
+  }
+
+
+  // differs from tx because it returns the owner node, not the created text
+  public XhtmlNode txN(String cnt) {
+    addText(cnt);
+    return this;
+  }
+  
+  public XhtmlNode txOrCode(boolean code, String cnt) {
+    if (code) {
+      XhtmlNode c = code();
+      boolean first = true;
+      for (String line : cnt.split("\\r?\\n")) {
+        if (first) first = false; else c.br();
+        c.tx(line.replace(" ", Character.toString(0xA0)));
+      }
+    } else {
+      addText(cnt);
+    }
+    return this;
+  }
+
+
+  public XhtmlNode iff(boolean test) {
+    if (test) {
+      return this;
+    } else {
+      return new XhtmlNode(NodeType.Element, "span"); // which will never be connected
+    }
+  }
+
+
+  public XhtmlNode button(String class_, String title) {
+    XhtmlNode btn = addTag("button");
+    btn.attribute("class", class_);
+    if (title != null) {
+      btn.attribute("title", title);
+    }
+    return btn;
+  }
+
+
+  public XhtmlNode head() {
+    return addTag("head");
+  }
+  
+  public XhtmlNode body() {
+    return addTag("body");
+  }
+  public XhtmlNode title(String title) {
+    return addTag("title").tx(title);
+  }
+  
+  public XhtmlNode link(String rel, String href) {
+    return addTag("link").attribute("rel", rel).attribute("href", href);
+  }
+
+
+  public void wbr() {
+    addTag("wbr");
+    
   }
   
 }

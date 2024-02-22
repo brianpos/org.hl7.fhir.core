@@ -69,6 +69,8 @@ public class Params {
   public static final String LEFT = "-left";
   public static final String RIGHT = "-right";
   public static final String NO_INTERNAL_CACHING = "-no-internal-caching";
+
+  public static final String PRELOAD_CACHE = "-preload-cache";
   public static final String NO_EXTENSIBLE_BINDING_WARNINGS = "-no-extensible-binding-warnings";
   public static final String NO_UNICODE_BIDI_CONTROL_CHARS = "-no_unicode_bidi_control_chars";
   public static final String NO_INVARIANTS = "-no-invariants";
@@ -87,6 +89,7 @@ public class Params {
   public static final String SRC_LANG = "-src-lang";
   public static final String TGT_LANG = "-tgt-lang";
   public static final String ALLOW_DOUBLE_QUOTES = "-allow-double-quotes-in-fhirpath";
+  public static final String DISABLE_DEFAULT_RESOURCE_FETCHER = "-disable-default-resource-fetcher";
   public static final String CHECK_IPS_CODES = "-check-ips-codes";
   public static final String BEST_PRACTICE = "-best-practice";
   
@@ -181,25 +184,25 @@ public class Params {
           cliContext.addProfile(p);
         }
       } else if (args[i].equals(BUNDLE)) {
-        String p = null;
-        String r = null;
+        String profile = null;
+        String rule = null;
         if (i + 1 == args.length) {
           throw new Error("Specified -profile without indicating bundle rule ");
         } else {
-          r = args[++i];
+          rule = args[++i];
         }
         if (i + 1 == args.length) {
           throw new Error("Specified -profile without indicating profile source");
         } else {
-          p = args[++i];
+          profile = args[++i];
         }
-        cliContext.getBundleValidationRules().add(new BundleValidationRule(r, p));
+        cliContext.getBundleValidationRules().add(new BundleValidationRule().setRule(rule).setProfile(profile));
       } else if (args[i].equals(QUESTIONNAIRE)) {
         if (i + 1 == args.length)
           throw new Error("Specified -questionnaire without indicating questionnaire mode");
         else {
-          String q = args[++i];
-          cliContext.setQuestionnaireMode(QuestionnaireMode.fromCode(q));
+          String questionnaireMode = args[++i];
+          cliContext.setQuestionnaireMode(QuestionnaireMode.fromCode(questionnaireMode));
         }
       } else if (args[i].equals(LEVEL)) {
         if (i + 1 == args.length)
@@ -268,6 +271,8 @@ public class Params {
         cliContext.setNoExtensibleBindingMessages(true);
       } else if (args[i].equals(ALLOW_DOUBLE_QUOTES)) {
         cliContext.setAllowDoubleQuotesInFHIRPath(true);       
+      } else if (args[i].equals(DISABLE_DEFAULT_RESOURCE_FETCHER)) {
+        cliContext.setDisableDefaultResourceFetcher(true);
       } else if (args[i].equals(CHECK_IPS_CODES)) {
         cliContext.setCheckIPSCodes(true);       
       } else if (args[i].equals(NO_UNICODE_BIDI_CONTROL_CHARS)) {

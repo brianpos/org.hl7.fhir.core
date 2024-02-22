@@ -16,6 +16,7 @@ import org.hl7.fhir.r5.model.ElementDefinition.ElementDefinitionSlicingComponent
 import org.hl7.fhir.r5.model.ElementDefinition.SlicingRules;
 import org.hl7.fhir.r5.model.OperationOutcome.IssueType;
 import org.hl7.fhir.r5.model.StructureDefinition;
+import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionKind;
 import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionSnapshotComponent;
 import org.hl7.fhir.r5.utils.ToolingExtensions;
 import org.hl7.fhir.utilities.Utilities;
@@ -165,7 +166,7 @@ public class ProfilePathProcessor {
     ElementDefinition res = null;
     List<TypeSlice> typeList = new ArrayList<>();
     // just repeat processing entries until we run out of our allowed scope (1st entry, the allowed scope is all the entries)
-    while (cursors.baseCursor <= getBaseLimit()) {
+    while (cursors.baseCursor <= getBaseLimit() && cursors.baseCursor < cursors.base.getElement().size()) {
       // get the current focus of the base, and decide what to do
       ElementDefinition currentBase = cursors.base.getElement().get(cursors.baseCursor);
       String currentBasePath = profileUtilities.fixedPathSource(getContextPathSource(), currentBase.getPath(), getRedirector());
@@ -621,7 +622,12 @@ public class ProfilePathProcessor {
           if (firstTypeStructureDefinition.getSnapshot().getElement().isEmpty()) {
             throw new FHIRException(profileUtilities.getContext().formatMessage(I18nConstants.SNAPSHOT_IS_EMPTY, firstTypeStructureDefinition.getVersionedUrl(), "Source for first element"));
           } else {
-            src = firstTypeStructureDefinition.getSnapshot().getElement().get(0);
+            src = firstTypeStructureDefinition.getSnapshot().getElement().get(0).copy();
+            if (!src.getPath().contains(".") && firstTypeStructureDefinition.getKind() == StructureDefinitionKind.RESOURCE) {
+              // we can't migrate the constraints in this case, because the sense of %resource changes when the root resource
+              // is treated as an element. The validator will enforce the constraint
+              src.getConstraint().clear(); // 
+            }
           }
         }
         template = src.copy().setPath(currentBase.getPath());
@@ -842,6 +848,7 @@ public class ProfilePathProcessor {
     outcome.setPath(profileUtilities.fixedPathDest(getContextPathTarget(), outcome.getPath(), getRedirector(), getContextPathSource()));
     profileUtilities.updateFromBase(outcome, currentBase, getSourceStructureDefinition().getUrl());
     profileUtilities.updateConstraintSources(outcome, getSourceStructureDefinition().getUrl());
+    profileUtilities.checkExtensions(outcome);
     profileUtilities.updateFromObligationProfiles(outcome);
     profileUtilities.updateURLs(url, webUrl, outcome);
     profileUtilities.markDerived(outcome);

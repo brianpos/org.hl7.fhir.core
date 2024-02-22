@@ -28,6 +28,7 @@ public class I18nConstants {
   public static final String BUNDLE_BUNDLE_ENTRY_NOPROFILE_EXPL = "Bundle_BUNDLE_Entry_NoProfile_EXPL";
   public static final String BUNDLE_BUNDLE_ENTRY_NOPROFILE_TYPE = "Bundle_BUNDLE_Entry_NoProfile_TYPE";
   public static final String BUNDLE_BUNDLE_ENTRY_NOTFOUND = "Bundle_BUNDLE_Entry_NotFound";
+  public static final String BUNDLE_BUNDLE_ENTRY_NOTFOUND_APPARENT = "BUNDLE_BUNDLE_ENTRY_NOTFOUND_APPARENT";
   public static final String BUNDLE_BUNDLE_ENTRY_ORPHAN_DOCUMENT = "Bundle_BUNDLE_Entry_Orphan_DOCUMENT";
   public static final String BUNDLE_BUNDLE_ENTRY_ORPHAN_MESSAGE = "Bundle_BUNDLE_Entry_Orphan_MESSAGE";
   public static final String BUNDLE_BUNDLE_ENTRY_REVERSE_R4 = "BUNDLE_BUNDLE_ENTRY_REVERSE_R4";
@@ -64,6 +65,7 @@ public class I18nConstants {
   public static final String CODESYSTEM_CS_UNK_EXPANSION = "CODESYSTEM_CS_UNK_EXPANSION";
   public static final String CODE_FOUND_IN_EXPANSION_HOWEVER_ = "Code_found_in_expansion_however_";
   public static final String CODING_HAS_NO_SYSTEM__CANNOT_VALIDATE = "Coding_has_no_system__cannot_validate";
+  public static final String Coding_has_no_system__cannot_validate_NO_INFER = "Coding_has_no_system__cannot_validate_NO_INFER";
   public static final String CONTAINED_RESOURCE_DOES_NOT_APPEAR_TO_BE_A_FHIR_RESOURCE_UNKNOWN_NAME_ = "Contained_resource_does_not_appear_to_be_a_FHIR_resource_unknown_name_";
   public static final String Could_not_match_discriminator_for_slice_in_profile = "Could_not_match_discriminator_for_slice_in_profile";
   public static final String DEFINED_IN_THE_PROFILE = "defined_in_the_profile";
@@ -177,7 +179,7 @@ public class I18nConstants {
   public static final String FHIRPATH_ORDERED_ONLY = "FHIRPATH_ORDERED_ONLY";
   public static final String FHIRPATH_PARAM_WRONG = "FHIRPATH_PARAM_WRONG";
   public static final String FHIRPATH_PRIMITIVE_ONLY = "FHIRPATH_PRIMITIVE_ONLY";
-  public static final String FHIRPATH_REFERENCE_ONLY = "FHIRPATH_ORDERED_ONLY";
+  public static final String FHIRPATH_REFERENCE_ONLY = "FHIRPATH_REFERENCE_ONLY";
   public static final String FHIRPATH_RESOLVE_DISCRIMINATOR_CANT_FIND = "FHIRPATH_RESOLVE_DISCRIMINATOR_CANT_FIND";
   public static final String FHIRPATH_RESOLVE_DISCRIMINATOR_NO_TARGET = "FHIRPATH_RESOLVE_DISCRIMINATOR_NO_TARGET";
   public static final String FHIRPATH_RIGHT_VALUE = "FHIRPATH_RIGHT_VALUE";
@@ -264,6 +266,9 @@ public class I18nConstants {
   public static final String NEEDS_A_SNAPSHOT = "needs_a_snapshot";
   public static final String NODE_TYPE__IS_NOT_ALLOWED = "Node_type__is_not_allowed";
   public static final String NONE_OF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_ = "None_of_the_provided_codes_are_in_the_value_set";
+  public static final String NONE_OF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_ONE = "None_of_the_provided_codes_are_in_the_value_set_one";
+  public static final String UNABLE_TO_CHECK_IF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_CS = "UNABLE_TO_CHECK_IF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_CS";
+  public static final String UNABLE_TO_CHECK_IF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_VS = "UNABLE_TO_CHECK_IF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_VS";
   public static final String UNABLE_TO_CHECK_IF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_ = "UNABLE_TO_CHECK_IF_THE_PROVIDED_CODES_ARE_IN_THE_VALUE_SET_";
   public static final String NOT_DONE_YET = "Not_done_yet";
   public static final String NOT_DONE_YET_CANT_FETCH_ = "not_done_yet_cant_fetch_";
@@ -533,6 +538,7 @@ public class I18nConstants {
   public static final String TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_NOTEMPTY = "Type_Specific_Checks_DT_Primitive_NotEmpty";
   public static final String TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_REGEX = "Type_Specific_Checks_DT_Primitive_Regex";
   public static final String TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_REGEX_TYPE = "Type_Specific_Checks_DT_Primitive_Regex_Type";
+  public static final String TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_REGEX_TYPE_ALT = "TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_REGEX_TYPE_ALT";
   public static final String TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_REGEX_EXCEPTION = "TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_REGEX_EXCEPTION";
   public static final String TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_VALUEEXT = "Type_Specific_Checks_DT_Primitive_ValueExt";
   public static final String TYPE_SPECIFIC_CHECKS_DT_PRIMITIVE_WS = "Type_Specific_Checks_DT_Primitive_WS";
@@ -545,6 +551,8 @@ public class I18nConstants {
   public static final String TYPE_SPECIFIC_CHECKS_DT_URI_UUID = "Type_Specific_Checks_DT_URI_UUID";
   public static final String TYPE_SPECIFIC_CHECKS_DT_URI_WS = "Type_Specific_Checks_DT_URI_WS";
   public static final String TYPE_SPECIFIC_CHECKS_DT_URL_RESOLVE = "Type_Specific_Checks_DT_URL_Resolve";
+  public static final String TYPE_SPECIFIC_CHECKS_DT_XHTML_RESOLVE = "Type_Specific_Checks_DT_XHTML_Resolve";
+  public static final String TYPE_SPECIFIC_CHECKS_DT_XHTML_RESOLVE_IMG = "Type_Specific_Checks_DT_XHTML_Resolve_Img";
   public static final String TYPE_SPECIFIC_CHECKS_DT_URL_EXAMPLE = "TYPE_SPECIFIC_CHECKS_DT_URL_EXAMPLE";
   public static final String TYPE_SPECIFIC_CHECKS_DT_CANONICAL_TYPE = "TYPE_SPECIFIC_CHECKS_DT_CANONICAL_TYPE";
   public static final String TYPE_SPECIFIC_CHECKS_DT_CANONICAL_RESOLVE = "TYPE_SPECIFIC_CHECKS_DT_CANONICAL_RESOLVE";
@@ -581,6 +589,7 @@ public class I18nConstants {
   public static final String UNABLE_TO_RESOLVE_SYSTEM__VALUE_SET_EXPANSION_HAS_MULTIPLE_SYSTEMS = "Unable_to_resolve_system__value_set_expansion_has_multiple_systems";
   public static final String UNABLE_TO_RESOLVE_SYSTEM__VALUE_SET_HAS_IMPORTS = "Unable_to_resolve_system__value_set_has_imports";
   public static final String UNABLE_TO_RESOLVE_SYSTEM__VALUE_SET_HAS_MULTIPLE_MATCHES = "Unable_to_resolve_system__value_set_has_multiple_matches";
+  public static final String UNABLE_TO_RESOLVE_SYSTEM__VALUE_SET_HAS_NO_MATCHES = "Unable_to_resolve_system__value_set_has_no_matches";
   public static final String UNABLE_TO_RESOLVE_SYSTEM__VALUE_SET_HAS_INCLUDE_WITH_NO_SYSTEM = "Unable_to_resolve_system__value_set_has_include_with_no_system";
   public static final String UNABLE_TO_RESOLVE_SYSTEM__VALUE_SET_HAS_INCLUDE_WITH_UNKNOWN_SYSTEM = "Unable_to_resolve_system__value_set_has_include_with_unknown_system";
   public static final String UNABLE_TO_RESOLVE_SYSTEM__VALUE_SET_HAS_INCLUDE_WITH_FILTER = "Unable_to_resolve_system__value_set_has_include_with_filter";
@@ -594,8 +603,9 @@ public class I18nConstants {
   public static final String UNEXPECTED_CONDITION_IN_DIFFERENTIAL_TYPESLICETYPELISTSIZE__1_AT_ = "Unexpected_condition_in_differential_typeslicetypelistsize__1_at_";
   public static final String UNEXPECTED_DATATYPE_FOR_RDFSTYPE = "Unexpected_datatype_for_rdfstype";
   public static final String UNHANDLED_SITUATION_RESOURCE_IS_PROFILED_TO_MORE_THAN_ONE_OPTION__CANNOT_SORT_PROFILE = "Unhandled_situation_resource_is_profiled_to_more_than_one_option__cannot_sort_profile";
-  public static final String UNKNOWN_CODE__IN_ = "Unknown_Code__in_";
-  public static final String UNKNOWN_CODE__IN_FRAGMENT = "UNKNOWN_CODE__IN_FRAGMENT";
+  public static final String UNKNOWN_CODE_IN = "Unknown_Code_in";
+  public static final String UNKNOWN_CODE_IN_VERSION = "Unknown_Code_in_Version";
+  public static final String UNKNOWN_CODE_IN_FRAGMENT = "UNKNOWN_CODE_IN_FRAGMENT";
   public static final String UNKNOWN_DATA_FORMAT_ = "Unknown_Data_format_";
   public static final String UNKNOWN_DATE_FORMAT_ = "Unknown_Date_format_";
   public static final String UNKNOWN_RESOURCE_TYPE_MISSING_RDFSTYPE = "Unknown_resource_type_missing_rdfstype";
@@ -625,6 +635,8 @@ public class I18nConstants {
   public static final String VALIDATION_VAL_PROFILE_MATCHMULTIPLE = "Validation_VAL_Profile_MatchMultiple";
   public static final String VALIDATION_VAL_PROFILE_MAXIMUM = "Validation_VAL_Profile_Maximum";
   public static final String VALIDATION_VAL_PROFILE_MINIMUM = "Validation_VAL_Profile_Minimum";
+  public static final String VALIDATION_VAL_PROFILE_MINIMUM_SLICE = "Validation_VAL_Profile_Minimum_SLICE";
+  public static final String VALIDATION_VAL_PROFILE_MINIMUM_MAGIC = "VALIDATION_VAL_PROFILE_MINIMUM_MAGIC";
   public static final String VALIDATION_VAL_PROFILE_MULTIPLEMATCHES = "Validation_VAL_Profile_MultipleMatches";
   public static final String VALIDATION_VAL_PROFILE_NOCHECKMAX = "Validation_VAL_Profile_NoCheckMax";
   public static final String VALIDATION_VAL_PROFILE_NOCHECKMIN = "Validation_VAL_Profile_NoCheckMin";
@@ -868,6 +880,7 @@ public class I18nConstants {
   public static final String UNKNOWN_CODESYSTEM = "UNKNOWN_CODESYSTEM";
   public static final String UNKNOWN_CODESYSTEM_VERSION = "UNKNOWN_CODESYSTEM_VERSION";
   public static final String VALUESET_TOO_COSTLY = "VALUESET_TOO_COSTLY";
+  public static final String VALUESET_TOO_COSTLY_COUNT = "VALUESET_TOO_COSTLY_COUNT";
   public static final String VALUESET_TOO_COSTLY_TIME = "VALUESET_TOO_COSTLY_TIME";
   public static final String NO_VALID_DISPLAY_FOUND = "NO_VALID_DISPLAY_FOUND";
   public static final String SD_NO_CONTEXT_WHEN_NOT_EXTENSION = "SD_NO_CONTEXT_WHEN_NOT_EXTENSION";
@@ -952,6 +965,7 @@ public class I18nConstants {
   public static final String FHIRPATH_COLLECTION_STATUS_OPERATION_RIGHT = "FHIRPATH_COLLECTION_STATUS_OPERATION_RIGHT";
   public static final String ED_INVARIANT_KEY_ALREADY_USED = "ED_INVARIANT_KEY_ALREADY_USED";
   public static final String FHIRPATH_OFTYPE_IMPOSSIBLE = "FHIRPATH_OFTYPE_IMPOSSIBLE";
+  public static final String FHIRPATH_AS_IMPOSSIBLE = "FHIRPATH_AS_IMPOSSIBLE";
   public static final String ED_SEARCH_EXPRESSION_ERROR = "ED_SEARCH_EXPRESSION_ERROR";
   public static final String SD_EXTENSION_URL_MISMATCH = "SD_EXTENSION_URL_MISMATCH";
   public static final String MSG_DEPRECATED = "MSG_DEPRECATED";
@@ -995,6 +1009,7 @@ public class I18nConstants {
   public static final String VALIDATION_HL7_WG_NEEDED = "VALIDATION_HL7_WG_NEEDED";
   public static final String VALIDATION_HL7_WG_UNKNOWN = "VALIDATION_HL7_WG_UNKNOWN";
   public static final String VALIDATION_HL7_PUBLISHER_MISMATCH = "VALIDATION_HL7_PUBLISHER_MISMATCH";
+  public static final String VALIDATION_HL7_PUBLISHER_MISMATCH2 = "VALIDATION_HL7_PUBLISHER_MISMATCH2";
   public static final String VALIDATION_HL7_WG_URL = "VALIDATION_HL7_WG_URL";
   public static final String VALIDATION_HL7_PUBLISHER_MISSING = "VALIDATION_HL7_PUBLISHER_MISSING";
   public static final String TYPE_SPECIFIC_CHECKS_DT_QTY_UCUM_ANNOTATIONS = "TYPE_SPECIFIC_CHECKS_DT_QTY_UCUM_ANNOTATIONS";
@@ -1010,6 +1025,39 @@ public class I18nConstants {
   public static final String XSI_TYPE_WRONG = "XSI_TYPE_WRONG";
   public static final String XSI_TYPE_UNNECESSARY = "XSI_TYPE_UNNECESSARY";
   public static final String TERMINOLOGY_TX_OID_MULTIPLE_MATCHES = "TERMINOLOGY_TX_OID_MULTIPLE_MATCHES";
+  public static final String CDA_UNKNOWN_TEMPLATE = "CDA_UNKNOWN_TEMPLATE";
+  public static final String CDA_UNKNOWN_TEMPLATE_EXT = "CDA_UNKNOWN_TEMPLATE_EXT";
+  public static final String UNABLE_TO_DETERMINE_TYPE_CONTEXT_INV = "UNABLE_TO_DETERMINE_TYPE_CONTEXT_INV";
+  public static final String ED_CONTEXT_INVARIANT_EXPRESSION_ERROR = "ED_CONTEXT_INVARIANT_EXPRESSION_ERROR";
+  public static final String VALIDATION_VAL_PROFILE_SIGNPOST_OBS = "VALIDATION_VAL_PROFILE_SIGNPOST_OBS";
+  public static final String FHIRPATH_INVALID_TYPE = "FHIRPATH_INVALID_TYPE";
+  public static final String FHIRPATH_AS_COLLECTION = "FHIRPATH_AS_COLLECTION";
+  public static final String FHIRPATH_ARITHMETIC_QTY = "FHIRPATH_ARITHMETIC_QTY";
+  public static final String FHIRPATH_ARITHMETIC_UNIT = "FHIRPATH_ARITHMETIC_UNIT";
+  public static final String FHIRPATH_ARITHMETIC_PLUS = "FHIRPATH_ARITHMETIC_PLUS";
+  public static final String FHIRPATH_ARITHMETIC_MINUS = "FHIRPATH_ARITHMETIC_MINUS";
+  public static final String BUNDLE_ENTRY_URL_MATCHES_TYPE_ID = "BUNDLE_ENTRY_URL_MATCHES_TYPE_ID";
+  public static final String BUNDLE_ENTRY_URL_MATCHES_NO_ID = "BUNDLE_ENTRY_URL_MATCHES_NO_ID";
+  public static final String BUNDLE_ENTRY_URL_ABSOLUTE = "BUNDLE_ENTRY_URL_ABSOLUTE";
+  public static final String BUNDLE_BUNDLE_ENTRY_FOUND_MULTIPLE = "BUNDLE_BUNDLE_ENTRY_FOUND_MULTIPLE";
+  public static final String FHIRPATH_COLLECTION_STATUS_PARAMETER = "FHIRPATH_COLLECTION_STATUS_PARAMETER";
+  public static final String FHIRPATH_COLLECTION_STATUS_CONTEXT = "FHIRPATH_COLLECTION_STATUS_CONTEXT";
+  public static final String SEARCHPARAMETER_MISSING_COMPONENTS = "SEARCHPARAMETER_MISSING_COMPONENTS";
+  public static final String BUNDLE_BUNDLE_ENTRY_NOTFOUND_FRAGMENT = "BUNDLE_BUNDLE_ENTRY_NOTFOUND_FRAGMENT";
+  public static final String BUNDLE_BUNDLE_ENTRY_FOUND_MULTIPLE_FRAGMENT = "BUNDLE_BUNDLE_ENTRY_FOUND_MULTIPLE_FRAGMENT";
+  public static final String XHTML_IDREF_NOT_FOUND = "XHTML_IDREF_NOT_FOUND";
+  public static final String XHTML_IDREF_NOT_MULTIPLE_MATCHES = "XHTML_IDREF_NOT_MULTIPLE_MATCHES";
+  public static final String SD_CONTEXT_SHOULD_NOT_BE_FHIRPATH = "SD_CONTEXT_SHOULD_NOT_BE_FHIRPATH";
+  public static final String TX_GENERAL_CC_ERROR_MESSAGE = "TX_GENERAL_CC_ERROR_MESSAGE";
+  public static final String FHIRPATH_UNKNOWN_EXTENSION = "FHIRPATH_UNKNOWN_EXTENSION";
+  public static final String TYPE_SPECIFIC_CHECKS_DT_XHTML_MULTIPLE_MATCHES = "TYPE_SPECIFIC_CHECKS_DT_XHTML_MULTIPLE_MATCHES";
+  public static final String CONTAINED_ORPHAN_DOM3 = "CONTAINED_ORPHAN_DOM3";
+  public static final String VALUESET_INCLUDE_CS_NOT_CS = "VALUESET_INCLUDE_CS_NOT_CS";
+  public static final String VALUESET_INCLUDE_CS_NOT_FOUND = "VALUESET_INCLUDE_CS_NOT_FOUND";
+  public static final String VALUESET_INCLUDE_CSVER_NOT_FOUND = "VALUESET_INCLUDE_CSVER_NOT_FOUND";
+  public static final String VALUESET_INCLUDE_CS_MULTI_FOUND = "VALUESET_INCLUDE_CS_MULTI_FOUND";
+  public static final String VALUESET_INCLUDE_CSVER_MULTI_FOUND = "VALUESET_INCLUDE_CSVER_MULTI_FOUND";
+  public static final String UNABLE_TO_INFER_CODESYSTEM = "UNABLE_TO_INFER_CODESYSTEM";
 }
 
 

@@ -14,13 +14,15 @@ class WorkingContext {
   private List<ValueSetExpansionContainsComponent> codes = new ArrayList<ValueSet.ValueSetExpansionContainsComponent>();
   private List<ValueSetExpansionContainsComponent> roots = new ArrayList<ValueSet.ValueSetExpansionContainsComponent>();
   private Map<String, ValueSetExpansionContainsComponent> map = new HashMap<String, ValueSet.ValueSetExpansionContainsComponent>();
+  private Map<String, ValueSetExpansionContainsComponent> rootMap = new HashMap<String, ValueSet.ValueSetExpansionContainsComponent>();
   private Set<String> excludeKeys = new HashSet<String>();
   private Set<String> excludeSystems = new HashSet<String>();
   
   private boolean canBeHeirarchy = true;
-  private int offset;
-  private int count;
-  private int total;
+  private Integer offsetParam;
+  private Integer countParam; // allowed count. Because of internal processing, we allow more 
+  private int total; // running count. This might be more than actually seen if we call out to an external server and only get the first 1000 codes
+  private boolean noTotal; // we lost count of the correct total
   
   public List<ValueSetExpansionContainsComponent> getCodes() {
     return codes;
@@ -32,6 +34,10 @@ class WorkingContext {
 
   public Map<String, ValueSetExpansionContainsComponent> getMap() {
     return map;
+  }
+
+  public Map<String, ValueSetExpansionContainsComponent> getRootMap() {
+    return rootMap;
   }
 
   public Set<String> getExcludeKeys() {
@@ -50,32 +56,48 @@ class WorkingContext {
     this.canBeHeirarchy = canBeHeirarchy;
   }
   
-  public int getOffset() {
-    return offset;
+  public boolean hasOffsetParam() {
+    return offsetParam != null;
   }
   
-  public void setOffset(int offset) {
-    this.offset = offset;
+  public int getOffsetParam() {
+    return offsetParam == null ? 0 : offsetParam;
   }
   
-  public int getCount() {
-    return count;
+  public void setOffsetParam(int offsetParam) {
+    this.offsetParam = offsetParam;
   }
   
-  public void setCount(int count) {
-    this.count = count;
+  public boolean hasCountParam() {
+    return countParam != null;
+  }
+  
+  public int getCountParam() {
+    return countParam == null ? 0 : countParam;
+  }
+  
+  public void setCountParam(int countParam) {
+    this.countParam = countParam;
   }
   
   public int getTotal() {
     return total;
   }
-  
-  public void setTotal(int total) {
-    this.total = total;
-  }
 
   public void incTotal() {
     total++;
+  }
+
+  public void incTotal(int amount) {
+    total += amount;
+  }
+
+  public boolean isNoTotal() {
+    return noTotal;
+  }
+
+  public void setNoTotal(boolean noTotal) {
+    this.noTotal = noTotal;
   }
   
 }

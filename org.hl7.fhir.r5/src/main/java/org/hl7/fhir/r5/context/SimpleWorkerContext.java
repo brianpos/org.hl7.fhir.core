@@ -36,12 +36,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -52,8 +52,9 @@ import org.apache.commons.io.IOUtils;
 import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.exceptions.FHIRFormatError;
+import org.hl7.fhir.exceptions.TerminologyServiceException;
 import org.hl7.fhir.r5.context.CanonicalResourceManager.CanonicalResourceProxy;
-import org.hl7.fhir.r5.context.IWorkerContext.ILoggingService.LogCategory;
+import org.hl7.fhir.r5.context.ILoggingService.LogCategory;
 import org.hl7.fhir.r5.formats.IParser;
 import org.hl7.fhir.r5.formats.JsonParser;
 import org.hl7.fhir.r5.formats.XmlParser;
@@ -63,11 +64,12 @@ import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionKind;
 import org.hl7.fhir.r5.model.StructureDefinition.TypeDerivationRule;
 import org.hl7.fhir.r5.model.StructureMap.StructureMapModelMode;
 import org.hl7.fhir.r5.model.StructureMap.StructureMapStructureComponent;
-import org.hl7.fhir.r5.profilemodel.PEDefinition;
-import org.hl7.fhir.r5.profilemodel.PEBuilder;
-import org.hl7.fhir.r5.terminologies.CodeSystemUtilities;
 import org.hl7.fhir.r5.terminologies.JurisdictionUtilities;
 import org.hl7.fhir.r5.terminologies.client.ITerminologyClient;
+import org.hl7.fhir.r5.terminologies.client.TerminologyClientContext;
+import org.hl7.fhir.r5.terminologies.client.TerminologyClientManager;
+import org.hl7.fhir.r5.terminologies.client.TerminologyClientManager.ITerminologyClientFactory;
+import org.hl7.fhir.r5.terminologies.client.TerminologyClientR5;
 import org.hl7.fhir.r5.utils.validation.IResourceValidator;
 import org.hl7.fhir.r5.utils.R5Hacker;
 import org.hl7.fhir.r5.utils.XVerExtensionManager;
@@ -100,7 +102,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     private PackageInformation pi;
 
     public PackageResourceLoader(PackageResourceInformation pri, IContextResourceLoader loader, PackageInformation pi) {
-      super(pri.getResourceType(), pri.getId(), loader == null ? pri.getUrl() :loader.patchUrl(pri.getUrl(), pri.getResourceType()), pri.getVersion(), pri.getSupplements(), pri.getDerivation());
+      super(pri.getResourceType(), pri.getId(), loader == null ? pri.getUrl() :loader.patchUrl(pri.getUrl(), pri.getResourceType()), pri.getVersion(), pri.getSupplements(), pri.getDerivation(), pri.getContent());
       this.filename = pri.getFilename();
       this.loader = loader;
       this.pi = pi;
@@ -211,7 +213,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     private final boolean allowLoadingDuplicates;
 
     @With
-    private final IWorkerContext.ILoggingService loggingService;
+    private final ILoggingService loggingService;
 
     public SimpleWorkerContextBuilder() {
       cacheTerminologyClientErrors = false;
@@ -238,7 +240,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     }
 
     private SimpleWorkerContext build(SimpleWorkerContext context) throws IOException {
-      context.initTS(terminologyCachePath);
+      context.initTxCache(terminologyCachePath);
       context.setUserAgent(userAgent);
       context.setLogger(loggingService);
       context.cacheResource(new org.hl7.fhir.r5.formats.JsonParser().parse(MagicResources.spdxCodesAsData()));
@@ -248,6 +250,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     public SimpleWorkerContext fromPackage(NpmPackage pi) throws IOException, FHIRException {
       SimpleWorkerContext context = getSimpleWorkerContextInstance();
       context.setAllowLoadingDuplicates(allowLoadingDuplicates);
+      context.terminologyClientManager.setFactory(TerminologyClientR5.factory());
       context.loadFromPackage(pi, null);
       return build(context);
     }
@@ -256,6 +259,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
       SimpleWorkerContext context = getSimpleWorkerContextInstance();
       context.setAllowLoadingDuplicates(allowLoadingDuplicates);      
       context.version = pi.getNpm().asString("version");
+      context.terminologyClientManager.setFactory(loader.txFactory());
       context.loadFromPackage(pi, loader);
       context.finishLoading(genSnapshots);
       return build(context);
@@ -327,28 +331,48 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
       loadBytes(name, stream);
   }
 
-  public String connectToTSServer(ITerminologyClient client, String log) {
+  public void connectToTSServer(ITerminologyClientFactory factory, ITerminologyClient client) {
+    terminologyClientManager.setFactory(factory);
+    if (txLog == null) {
+      txLog = client.getLogger();
+    }
+    TerminologyClientContext tcc = terminologyClientManager.setMasterClient(client);
+    txLog("Connect to "+client.getAddress());
     try {
-      txLog("Connect to "+client.getAddress());
-      tcc.setClient(client);
+      tcc.initialize();  
+    } catch (Exception e) {
+      if (canRunWithoutTerminology) {
+        noTerminologyServer = true;
+        logger.logMessage("==============!! Running without terminology server !! ==============");
+        if (terminologyClientManager.getMasterClient() != null) {
+          logger.logMessage("txServer = "+ terminologyClientManager.getMasterClient().getId());
+          logger.logMessage("Error = "+e.getMessage()+"");
+        }
+        logger.logMessage("=====================================================================");
+      } else {
+        e.printStackTrace();
+        throw new TerminologyServiceException(e);
+      }
+    }      
+  }
+  
+  public void connectToTSServer(ITerminologyClientFactory factory, String address, String software, String log) {
+    try {
+      terminologyClientManager.setFactory(factory);
       if (log != null && (log.endsWith(".htm") || log.endsWith(".html"))) {
         txLog = new HTMLClientLogger(log);
       } else {
         txLog = new TextClientLogger(log);
-      }
-      tcc.getClient().setLogger(txLog);
-      tcc.getClient().setUserAgent(userAgent);
-
-      final CapabilityStatement capabilitiesStatementQuick = txCache.hasCapabilityStatement() ? txCache.getCapabilityStatement() : tcc.getClient().getCapabilitiesStatementQuick();
-      txCache.cacheCapabilityStatement(capabilitiesStatementQuick);
-
-      final TerminologyCapabilities capabilityStatement = txCache.hasTerminologyCapabilities() ? txCache.getTerminologyCapabilities() : tcc.getClient().getTerminologyCapabilities();
-      txCache.cacheTerminologyCapabilities(capabilityStatement);
-
-      setTxCaps(capabilityStatement);
-      return capabilitiesStatementQuick.getSoftware().getVersion();
+      }      
+      ITerminologyClient client = factory.makeClient("tx-server", address, software, txLog);
+      // txFactory.makeClient("Tx-Server", txServer, "fhir/publisher", null)
+//      terminologyClientManager.setLogger(txLog);
+//      terminologyClientManager.setUserAgent(userAgent);
+      connectToTSServer(factory, client);
+      
     } catch (Exception e) {
-      throw new FHIRException(formatMessage(canNoTS ? I18nConstants.UNABLE_TO_CONNECT_TO_TERMINOLOGY_SERVER_USE_PARAMETER_TX_NA_TUN_RUN_WITHOUT_USING_TERMINOLOGY_SERVICES_TO_VALIDATE_LOINC_SNOMED_ICDX_ETC_ERROR__ : I18nConstants.UNABLE_TO_CONNECT_TO_TERMINOLOGY_SERVER, e.getMessage(), client.getAddress()), e);
+      e.printStackTrace();
+      throw new FHIRException(formatMessage(canNoTS ? I18nConstants.UNABLE_TO_CONNECT_TO_TERMINOLOGY_SERVER_USE_PARAMETER_TX_NA_TUN_RUN_WITHOUT_USING_TERMINOLOGY_SERVICES_TO_VALIDATE_LOINC_SNOMED_ICDX_ETC_ERROR__ : I18nConstants.UNABLE_TO_CONNECT_TO_TERMINOLOGY_SERVER, e.getMessage(), address), e);
     }
   }
 
@@ -531,6 +555,9 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
 	    if (version.equals("current")) {
 	      version = "5.0.0";
 	    }
+	  }
+	  if (loader != null && terminologyClientManager.getFactory() == null) {
+	    terminologyClientManager.setFactory(loader.txFactory());
 	  }
 	  return t;
 	}
@@ -807,6 +834,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
   public String getSpecUrl() {
     return VersionUtilities.getSpecUrl(getVersion())+"/";
   }
+
 
 
 }

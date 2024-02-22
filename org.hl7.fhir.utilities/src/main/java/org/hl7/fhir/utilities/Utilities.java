@@ -109,6 +109,12 @@ public class Utilities {
     return inf.pluralize(word);
   }
 
+  public static String singularise(String word) {
+    Inflector inf = new Inflector();
+    return inf.singularize(word);
+  }
+
+  
   public static boolean isInteger(String string) {
     if (isBlank(string)) {
       return false;
@@ -522,7 +528,6 @@ public class Utilities {
     return value.replace("\r\n", "\r").replace("\n", "\r").replace("\r", "\r\n");
   }
 
-
   public static String unescapeXml(String xml) throws FHIRException {
     if (xml == null)
       return null;
@@ -556,6 +561,8 @@ public class Utilities {
     return b.toString();
   }
 
+
+    
   public static String unescapeJson(String json) throws FHIRException {
     if (json == null)
       return null;
@@ -593,7 +600,7 @@ public class Utilities {
           break;
         case 'u':
           String hex = json.substring(i + 1, i + 5);
-          b.append((char) Integer.parseInt(hex, 16));
+          b.append(Character.toString(Integer.parseInt(hex, 16)));
           break;
         default:
           throw new FHIRException("Unknown JSON escape \\" + ch);
@@ -740,6 +747,10 @@ public class Utilities {
   public static String getDirectoryForFile(String filepath) {
     File f = new File(filepath);
     return f.getParent();
+  }
+
+  public static String getDirectoryForURL(String url) {
+    return url.contains("/") && url.lastIndexOf("/") > 10 ? url.substring(0, url.lastIndexOf("/")) : url;
   }
 
   public static String appendPeriod(String s) {
@@ -988,6 +999,23 @@ public class Utilities {
   public static boolean isURL(String s) {
     boolean ok = s.matches("^http(s{0,1})://[a-zA-Z0-9_/\\-\\.]+\\.([A-Za-z/]{2,5})[a-zA-Z0-9_/\\&\\?\\=\\-\\.\\~\\%]*");
     return ok;
+  }
+
+
+  public static String escapeCSV(String value) {
+    if (value == null)
+      return "";
+
+    StringBuilder b = new StringBuilder();
+    for (char c : value.toCharArray()) {
+      if (c == '"')
+        b.append("\"\"");
+      else if (isWhitespace(c)) 
+        b.append(" ");
+      else
+        b.append(c);
+    }
+    return b.toString();
   }
 
 
@@ -1422,12 +1450,14 @@ public class Utilities {
     long secs = ms / (1000) % 60;
     ms = ms % 1000;
     if (days > 0) {
-      return ""+days+"d "+hours+":"+mins+":"+secs+"."+ms;      
+      return ""+days+"d "+pad(hours,2)+":"+pad(mins,2)+":"+pad(secs,2)+"."+ms;      
     } else {
-      return ""+hours+":"+mins+":"+secs+"."+ms;
+      return ""+pad(hours, 2)+":"+pad(mins,2)+":"+pad(secs,2)+"."+ms;
     }
+  }
 
-
+  private static String pad(long v, int i) {
+    return padLeft(Long.toString(v), '0', i);
   }
 
   public static boolean startsWithInList(String s, String... list) {
@@ -1949,6 +1979,14 @@ public class Utilities {
     return res;
   }
 
+  public static String getRelativeUrlPath(String root, String path) {
+    String res = path.substring(root.length());
+    if (res.startsWith("/")) {
+      res = res.substring(1);
+    }
+    return res;
+  }
+
   public static List<String> listAllFiles(String path, List<String> ignoreList) {
     List<String> res = new ArrayList<>();
     addAllFiles(res, path, new File(path), ignoreList);
@@ -2154,6 +2192,38 @@ public class Utilities {
 
   public static String escapeSql(String s) {
     return s.replace("'", "''");
+  }
+
+  public static String[] simpleSplit(String cnt, String div) {
+    if (cnt == null) {
+      return new String[] {};
+    }
+    List<String> parts = new ArrayList<>();
+    int cursor = 0;
+    int last = 0;
+    while (cursor < cnt.length()) {
+      if (matches(cnt, div, cursor)) {
+        parts.add(cnt.substring(last, cursor));
+        cursor = cursor + div.length();
+        last = cursor;
+      } else {
+        cursor++;
+      }
+    }
+    parts.add(cnt.substring(last, cursor));
+    return parts.toArray(new String[] {});
+  }
+
+  private static boolean matches(String cnt, String div, int cursor) {
+    if (div.length() + cursor > cnt.length()) {
+      return false;
+    }
+    for (int i = 0; i < div.length(); i++) {
+      if (cnt.charAt(cursor+i) != div.charAt(i)) {
+        return false;
+      }
+    }
+    return true;
   }
 
 }

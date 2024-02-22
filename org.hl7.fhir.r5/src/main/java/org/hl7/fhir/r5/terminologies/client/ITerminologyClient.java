@@ -51,10 +51,11 @@ public interface ITerminologyClient {
   String getAddress();
   String getServerVersion();
   TerminologyCapabilities getTerminologyCapabilities() throws FHIRException;
-  ValueSet expandValueset(ValueSet vs, Parameters p, Map<String, String> params) throws FHIRException;
+  ValueSet expandValueset(ValueSet vs, Parameters p) throws FHIRException;
   Parameters validateCS(Parameters pin) throws FHIRException;
   Parameters validateVS(Parameters pin) throws FHIRException;
-  ITerminologyClient setTimeout(int i) throws FHIRException;
+  ITerminologyClient setTimeoutFactor(int i) throws FHIRException;
+  ToolingClientLogger getLogger();
   ITerminologyClient setLogger(ToolingClientLogger txLog) throws FHIRException;
   int getRetryCount() throws FHIRException;
   ITerminologyClient setRetryCount(int retryCount) throws FHIRException;
@@ -65,6 +66,9 @@ public interface ITerminologyClient {
   ClientHeaders getClientHeaders();
   ITerminologyClient setClientHeaders(ClientHeaders clientHeaders);
   ITerminologyClient setUserAgent(String userAgent);
-  ITerminologyClient setLanguage(String lang);
+  ITerminologyClient setAcceptLanguage(String lang);
+  ITerminologyClient setContentLanguage(String lang);
   String getUserAgent();
+  int getUseCount();
+  Bundle search(String type, String criteria); 
 }
