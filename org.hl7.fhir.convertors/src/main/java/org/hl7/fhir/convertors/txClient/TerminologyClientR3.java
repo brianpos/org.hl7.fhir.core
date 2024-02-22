@@ -101,10 +101,10 @@ public class TerminologyClientR3 implements ITerminologyClient {
   }
 
   @Override
-  public ValueSet expandValueset(ValueSet vs, Parameters p, Map<String, String> params) throws FHIRException {
+  public ValueSet expandValueset(ValueSet vs, Parameters p) throws FHIRException {
     org.hl7.fhir.dstu3.model.ValueSet vs2 = (org.hl7.fhir.dstu3.model.ValueSet) VersionConvertorFactory_30_50.convertResource(vs);
     org.hl7.fhir.dstu3.model.Parameters p2 = (org.hl7.fhir.dstu3.model.Parameters) VersionConvertorFactory_30_50.convertResource(p);
-    vs2 = client.expandValueset(vs2, p2, params); // todo: second parameter
+    vs2 = client.expandValueset(vs2, p2); // todo: second parameter
     return (ValueSet) VersionConvertorFactory_30_50.convertResource(vs2);
   }
 
@@ -123,9 +123,14 @@ public class TerminologyClientR3 implements ITerminologyClient {
   }
 
   @Override
-  public ITerminologyClient setTimeout(int i) {
-    client.setTimeout(i);
+  public ITerminologyClient setTimeoutFactor(int i) {
+    client.setTimeoutFactor(i);
     return this;
+  }
+  
+  @Override
+  public ToolingClientLogger getLogger() {
+    return client.getLogger();
   }
 
   @Override
@@ -193,6 +198,7 @@ public class TerminologyClientR3 implements ITerminologyClient {
     if (this.clientHeaders != null) {
       this.client.setClientHeaders(this.clientHeaders.headers());
     }
+    this.client.setVersionInMimeTypes(true);
     return this;
   }
 
@@ -213,8 +219,27 @@ public class TerminologyClientR3 implements ITerminologyClient {
   }
 
   @Override
-  public ITerminologyClient setLanguage(String lang) {
-    client.setLanguage(lang);
+  public ITerminologyClient setAcceptLanguage(String lang) {
+    client.setAcceptLanguage(lang);
     return this;
   }
+  
+  @Override
+  public ITerminologyClient setContentLanguage(String lang) {
+    client.setContentLanguage(lang);
+    return this;
+  }
+  
+  @Override
+  public int getUseCount() {
+    return client.getUseCount();
+  }
+
+  @Override
+  public Bundle search(String type, String criteria) {   
+    org.hl7.fhir.dstu3.model.Bundle result = client.search(type, criteria);
+    return result == null ? null : (Bundle) VersionConvertorFactory_30_50.convertResource(result);
+
+  }
+
 }

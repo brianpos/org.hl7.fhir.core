@@ -18,14 +18,17 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.utils.ResourceUtilities;
 import org.hl7.fhir.r4.utils.client.EFhirClientException;
 import org.hl7.fhir.r4.utils.client.ResourceFormat;
+import org.hl7.fhir.utilities.MimeType;
 import org.hl7.fhir.utilities.TextFile;
 import org.hl7.fhir.utilities.settings.FhirSettings;
 
 import okhttp3.Authenticator;
 import okhttp3.Credentials;
 import okhttp3.Headers;
+import okhttp3.Headers.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class FhirRequestBuilder {
@@ -258,10 +261,11 @@ public class FhirRequestBuilder {
   protected <T extends Resource> T unmarshalReference(Response response, String format) {
     T resource = null;
     OperationOutcome error = null;
-
+    byte[] body = null;
+    
     if (response.body() != null) {
       try {
-        byte[] body = response.body().bytes();
+        body = response.body().bytes();
         resource = (T) getParser(format).parse(body);
         if (resource instanceof OperationOutcome && hasError((OperationOutcome) resource)) {
           error = (OperationOutcome) resource;
@@ -275,15 +279,20 @@ public class FhirRequestBuilder {
 
     if (error != null) {
       String s = ResourceUtilities.getErrorDescription(error);
-      System.out.println(s);
-      if (s.startsWith("Unable to find value set")) {
-        System.out.println("!");
+      String reqid = response.header("x-request-id");
+      if (reqid == null) {
+        reqid = response.header("X-Request-Id");        
       }
+      if (reqid != null) {
+        s = s + " ["+reqid+"]";
+      }
+      System.out.println("Error from "+source+": " + s);
       throw new EFhirClientException("Error from "+source+": " + ResourceUtilities.getErrorDescription(error), error);
     }
 
     return resource;
   }
+
 
   /**
    * Unmarshalls Bundle from response stream.
@@ -338,9 +347,11 @@ public class FhirRequestBuilder {
     if (StringUtils.isBlank(format)) {
       format = ResourceFormat.RESOURCE_XML.getHeader();
     }
-    if (format.equalsIgnoreCase("json") || format.equalsIgnoreCase(ResourceFormat.RESOURCE_JSON.getHeader())) {
+    MimeType mt = new MimeType(format);
+    
+    if (mt.getBase().equalsIgnoreCase(ResourceFormat.RESOURCE_JSON.getHeader())) {
       return new JsonParser();
-    } else if (format.equalsIgnoreCase("xml") || format.equalsIgnoreCase(ResourceFormat.RESOURCE_XML.getHeader())) {
+    } else if (mt.getBase().equalsIgnoreCase(ResourceFormat.RESOURCE_XML.getHeader())) {
       return new XmlParser();
     } else {
       throw new EFhirClientException("Invalid format: " + format);

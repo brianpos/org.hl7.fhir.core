@@ -12,6 +12,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,12 +29,14 @@ import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
 import org.hl7.fhir.r5.context.ContextUtilities;
-import org.hl7.fhir.r5.context.IWorkerContext;
+import org.hl7.fhir.r5.context.ILoggingService;
 import org.hl7.fhir.r5.context.IWorkerContextManager;
 import org.hl7.fhir.r5.context.SimpleWorkerContext;
 import org.hl7.fhir.r5.context.SystemOutLoggingService;
 import org.hl7.fhir.r5.elementmodel.*;
 import org.hl7.fhir.r5.elementmodel.Manager.FhirFormat;
+import org.hl7.fhir.r5.fhirpath.ExpressionNode;
+import org.hl7.fhir.r5.fhirpath.FHIRPathEngine;
 import org.hl7.fhir.r5.formats.FormatUtilities;
 import org.hl7.fhir.r5.formats.IParser.OutputStyle;
 import org.hl7.fhir.r5.formats.JsonParser;
@@ -42,10 +45,10 @@ import org.hl7.fhir.r5.model.Base;
 import org.hl7.fhir.r5.model.Bundle;
 import org.hl7.fhir.r5.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r5.model.CanonicalResource;
+import org.hl7.fhir.r5.model.CanonicalType;
 import org.hl7.fhir.r5.model.Coding;
 import org.hl7.fhir.r5.model.DomainResource;
 import org.hl7.fhir.r5.model.ElementDefinition;
-import org.hl7.fhir.r5.model.ExpressionNode;
 import org.hl7.fhir.r5.model.ImplementationGuide;
 import org.hl7.fhir.r5.model.OperationOutcome;
 import org.hl7.fhir.r5.model.PackageInformation;
@@ -59,13 +62,14 @@ import org.hl7.fhir.r5.renderers.utils.RenderingContext;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.GenerationRules;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.ResourceRendererMode;
 import org.hl7.fhir.r5.utils.EOperationOutcome;
-import org.hl7.fhir.r5.utils.FHIRPathEngine;
 import org.hl7.fhir.r5.utils.ToolingExtensions;
 import org.hl7.fhir.r5.utils.structuremap.StructureMapUtilities;
 import org.hl7.fhir.r5.utils.validation.BundleValidationRule;
 import org.hl7.fhir.r5.utils.validation.IResourceValidator;
 import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor;
 import org.hl7.fhir.r5.utils.validation.IValidatorResourceFetcher;
+import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor.AdditionalBindingPurpose;
+import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor.CodedContentValidationAction;
 import org.hl7.fhir.r5.utils.validation.constants.BestPracticeWarningLevel;
 import org.hl7.fhir.r5.utils.validation.constants.BindingKind;
 import org.hl7.fhir.r5.utils.validation.constants.CheckDisplayOption;
@@ -90,6 +94,8 @@ import org.hl7.fhir.utilities.xhtml.XhtmlComposer;
 import org.hl7.fhir.validation.BaseValidator.ValidationControl;
 import org.hl7.fhir.validation.ValidatorUtils.SourceFile;
 import org.hl7.fhir.validation.cli.model.HtmlInMarkdownCheck;
+import org.hl7.fhir.validation.cli.model.ValidatedFragments;
+import org.hl7.fhir.validation.cli.model.ValidationTime;
 import org.hl7.fhir.validation.cli.services.IPackageInstaller;
 import org.hl7.fhir.validation.cli.utils.ProfileLoader;
 import org.hl7.fhir.validation.cli.utils.QuestionnaireMode;
@@ -324,7 +330,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
     private final boolean canRunWithoutTerminologyServer;
 
     @With
-    private final IWorkerContext.ILoggingService loggingService;
+    private final ILoggingService loggingService;
 
     @With
     private boolean THO = true;
@@ -342,7 +348,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
       loggingService = new SystemOutLoggingService();
     }
 
-    public ValidationEngineBuilder(String terminologyCachePath, String userAgent, String version, String txServer, String txLog, FhirPublication txVersion, TimeTracker timeTracker, boolean canRunWithoutTerminologyServer, IWorkerContext.ILoggingService loggingService, boolean THO) {
+    public ValidationEngineBuilder(String terminologyCachePath, String userAgent, String version, String txServer, String txLog, FhirPublication txVersion, TimeTracker timeTracker, boolean canRunWithoutTerminologyServer, ILoggingService loggingService, boolean THO) {
       this.terminologyCachePath = terminologyCachePath;
       this.userAgent = userAgent;
       this.version = version;
@@ -431,7 +437,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
    *
    * @see IgLoader#loadIgSource(String, boolean, boolean) loadIgSource for detailed description of the src parameter
    */
-  private void loadCoreDefinitions(String src, boolean recursive, String terminologyCachePath, String userAgent, TimeTracker tt, IWorkerContext.ILoggingService loggingService) throws FHIRException, IOException {
+  private void loadCoreDefinitions(String src, boolean recursive, String terminologyCachePath, String userAgent, TimeTracker tt, ILoggingService loggingService) throws FHIRException, IOException {
     NpmPackage npm = getPcm().loadPackage(src, null);
     if (npm != null) {
       version = npm.fhirVersion();
@@ -470,9 +476,8 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
 
   protected void initContext(TimeTracker tt) throws IOException {
     context.setCanNoTS(true);
-    context.setCacheId(UUID.randomUUID().toString());
     context.setAllowLoadingDuplicates(true); // because of Forge
-    context.setExpansionProfile(makeExpProfile());
+    context.setExpansionParameters(makeExpProfile());
     if (tt != null) {
       context.setClock(tt);
     }
@@ -518,7 +523,9 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
       return "n/a: No Terminology Server";
     } else {
       try {
-        return context.connectToTSServer(TerminologyClientFactory.makeClient("Tx-Server", url, context.getUserAgent(), version), log);
+        TerminologyClientFactory factory = new TerminologyClientFactory(version);
+        context.connectToTSServer(factory, url, context.getUserAgent(), log);
+        return "Connected to Terminology Server at "+url;
       } catch (Exception e) {
         if (context.isCanRunWithoutTerminology()) {
           return "n/a: Running without Terminology Server (error: " + e.getMessage() + ")";
@@ -632,10 +639,11 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
   }
 
 
-  public List<ValidatedFragment> validateAsFragments(byte[] source, FhirFormat cntType, List<String> profiles, List<ValidationMessage> messages) throws FHIRException, IOException, EOperationOutcome {
+  public ValidatedFragments validateAsFragments(byte[] source, FhirFormat cntType, List<String> profiles, List<ValidationMessage> messages) throws FHIRException, IOException, EOperationOutcome {
     InstanceValidator validator = getValidator(cntType);
     validator.validate(null, messages, new ByteArrayInputStream(source), cntType, asSdList(profiles));
-    return validator.validatedContent;
+    return new ValidatedFragments(validator.validatedContent,
+      ValidationTime.fromTimeTracker(validator.timeTracker));
   }
 
   public OperationOutcome validate(byte[] source, FhirFormat cntType, List<String> profiles, List<ValidationMessage> messages) throws FHIRException, IOException, EOperationOutcome {
@@ -834,6 +842,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
 
   public InstanceValidator getValidator(FhirFormat format) throws FHIRException, IOException {
     InstanceValidator validator = new InstanceValidator(context, null, null);
+    context.getTxClientManager().setUsage("validation");
     validator.setHintAboutNonMustSupport(hintAboutNonMustSupport);
     validator.setAnyExtensionsAllowed(anyExtensionsAllowed);
     validator.getExtensionDomains().clear();
@@ -919,7 +928,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
       else if (fn.endsWith(".json") && !fn.endsWith("template.json"))
         new org.hl7.fhir.dstu3.formats.JsonParser().setOutputStyle(org.hl7.fhir.dstu3.formats.IParser.OutputStyle.PRETTY).compose(s, res);
       else if (fn.endsWith(".txt") || fn.endsWith(".map")  || fn.endsWith(".fml"))
-        TextFile.stringToStream(org.hl7.fhir.dstu3.utils.StructureMapUtilities.render((org.hl7.fhir.dstu3.model.StructureMap) res), s, false);
+        TextFile.stringToStream(org.hl7.fhir.dstu3.utils.StructureMapUtilities.render((org.hl7.fhir.dstu3.model.StructureMap) res), s);
       else
         throw new FHIRException("Unsupported format for " + fn);
     } else if (VersionUtilities.isR4Ver(version)) {
@@ -929,7 +938,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
       else if (fn.endsWith(".json") && !fn.endsWith("template.json"))
         new org.hl7.fhir.r4.formats.JsonParser().setOutputStyle(org.hl7.fhir.r4.formats.IParser.OutputStyle.PRETTY).compose(s, res);
       else if (fn.endsWith(".txt") || fn.endsWith(".map")  || fn.endsWith(".fml"))
-        TextFile.stringToStream(org.hl7.fhir.r4.utils.StructureMapUtilities.render((org.hl7.fhir.r4.model.StructureMap) res), s, false);
+        TextFile.stringToStream(org.hl7.fhir.r4.utils.StructureMapUtilities.render((org.hl7.fhir.r4.model.StructureMap) res), s);
       else
         throw new FHIRException("Unsupported format for " + fn);
     } else if (VersionUtilities.isR2BVer(version)) {
@@ -954,7 +963,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
       else if (fn.endsWith(".json") && !fn.endsWith("template.json"))
         new JsonParser().setOutputStyle(org.hl7.fhir.r5.formats.IParser.OutputStyle.PRETTY).compose(s, r);
       else if (fn.endsWith(".txt") || fn.endsWith(".map")  || fn.endsWith(".fml"))
-        TextFile.stringToStream(StructureMapUtilities.render((org.hl7.fhir.r5.model.StructureMap) r), s, false);
+        TextFile.stringToStream(StructureMapUtilities.render((org.hl7.fhir.r5.model.StructureMap) r), s);
       else
         throw new FHIRException("Unsupported format for " + fn);
     } else
@@ -968,7 +977,7 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
     org.hl7.fhir.r5.elementmodel.Element src = Manager.parseSingle(context, new ByteArrayInputStream(cnt.getFocus().getBytes()), cnt.getCntType());
 
     // if the src has a url, we try to use the java code 
-    if ((canDoNative == null && src.hasChild("url")) || (canDoNative != null && canDoNative)) {
+    if ((canDoNative == null && src.hasChild("url", false)) || (canDoNative != null && canDoNative)) {
       try {
         if (VersionUtilities.isR2Ver(version)) {
           return VersionConvertor.convertVersionNativeR2(targetVer, cnt, format);
@@ -1044,14 +1053,14 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
   }
 
   public ValidationEngine setSnomedExtension(String sct) {
-    getContext().getExpansionParameters().addParameter("system-version", "http://snomed.info/sct|http://snomed.info/sct/" + sct);
+    getContext().getExpansionParameters().addParameter("system-version", new CanonicalType("http://snomed.info/sct|http://snomed.info/sct/" + sct));
     return this;
   }
 
   public FilesystemPackageCacheManager getPcm() throws IOException {
     if (pcm == null) {
       //System.out.println("Creating Package manager?");
-      pcm = new FilesystemPackageCacheManager(org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager.FilesystemPackageCacheMode.USER);
+      pcm = new FilesystemPackageCacheManager.Builder().build();
     }
     return pcm;
   }
@@ -1103,18 +1112,28 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
 
   @Override
   public ContainedReferenceValidationPolicy policyForContained(IResourceValidator validator,
-                                                      Object appContext,
-                                                      String containerType,
-                                                      String containerId,
-                                                      Element.SpecialElement containingResourceType,
-                                                      String path,
-                                                      String url) {
+      Object appContext,
+      StructureDefinition structure,
+      ElementDefinition element,
+      String containerType,
+      String containerId,
+      Element.SpecialElement containingResourceType,
+      String path,
+      String url) {
     return ContainedReferenceValidationPolicy.CHECK_VALID;
   }
 
   @Override
-  public CodedContentValidationPolicy policyForCodedContent(IResourceValidator validator, Object appContext, String stackPath, ElementDefinition definition, StructureDefinition structure, BindingKind kind, ValueSet valueSet, List<String> systems) {
-    return CodedContentValidationPolicy.VALUESET;
+  public EnumSet<CodedContentValidationAction>  policyForCodedContent(IResourceValidator validator,
+      Object appContext,
+      String stackPath,
+      ElementDefinition definition,
+      StructureDefinition structure,
+      BindingKind kind,
+      AdditionalBindingPurpose purpose,
+      ValueSet valueSet,
+      List<String> systems) {
+    return EnumSet.allOf(CodedContentValidationAction.class);
   }
 
   @Override
@@ -1201,6 +1220,18 @@ public class ValidationEngine implements IValidatorResourceFetcher, IValidationP
   public Resource loadResource(byte[] content, String fn) throws FHIRException, IOException {
     return  igLoader.loadResourceByVersion(version, content, fn);
 
+  }
+
+  @Override
+  public EnumSet<ResourceValidationAction> policyForResource(IResourceValidator validator, Object appContext,
+      StructureDefinition type, String path) {
+    return EnumSet.allOf(ResourceValidationAction.class);
+  }
+
+  @Override
+  public EnumSet<ElementValidationAction> policyForElement(IResourceValidator validator, Object appContext,
+      StructureDefinition structure, ElementDefinition element, String path) {
+    return EnumSet.allOf(ElementValidationAction.class);
   }
 
 }

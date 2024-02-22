@@ -15,10 +15,10 @@ import org.hl7.fhir.r5.conformance.profile.ProfileKnowledgeProvider;
 import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
 import org.hl7.fhir.r5.context.IWorkerContext;
 import org.hl7.fhir.r5.elementmodel.Element;
+import org.hl7.fhir.r5.fhirpath.FHIRPathEngine.IEvaluationContext;
 import org.hl7.fhir.r5.model.Base;
 import org.hl7.fhir.r5.model.DomainResource;
 import org.hl7.fhir.r5.renderers.utils.Resolver.IReferenceResolver;
-import org.hl7.fhir.r5.utils.FHIRPathEngine.IEvaluationContext;
 import org.hl7.fhir.utilities.FhirPublication;
 import org.hl7.fhir.utilities.MarkDownProcessor;
 import org.hl7.fhir.utilities.MarkDownProcessor.Dialect;
@@ -140,6 +140,32 @@ public class RenderingContext {
     JSON_NAMES
     
   }
+  
+  public enum FixedValueFormat {
+    JSON, JSON_ALL, XML, XML_ALL;
+
+    public static FixedValueFormat fromCode(String value) {
+      if (value == null) {
+        return JSON;
+      }
+      switch (value.toLowerCase()) {
+      case "json" : return JSON;
+      case "json-all" : return JSON_ALL;
+      case "xml" : return XML;
+      case "xml-all" : return XML_ALL;
+      }
+      return JSON;
+    }
+
+    public boolean notPrimitives() {
+      return this == JSON || this == XML;
+    }
+
+    public boolean isXml() {
+      return this == XML_ALL || this == XML;
+    }
+  }
+  
   private IWorkerContext worker;
   private MarkDownProcessor markdown;
   private ResourceRendererMode mode;
@@ -157,12 +183,8 @@ public class RenderingContext {
   private boolean header;
   private boolean contained;
 
-  private ValidationOptions terminologyServiceOptions = new ValidationOptions();
+  private ValidationOptions terminologyServiceOptions = new ValidationOptions(FhirPublication.R5);
   private boolean noSlowLookup;
-  private String tooCostlyNoteEmpty;
-  private String tooCostlyNoteNotEmpty;
-  private String tooCostlyNoteEmptyDependent;
-  private String tooCostlyNoteNotEmptyDependent;
   private List<String> codeSystemPropList = new ArrayList<>();
 
   private ProfileUtilities profileUtilitiesR;
@@ -174,6 +196,7 @@ public class RenderingContext {
   private ExampleScenarioRendererMode scenarioMode = null;
   private QuestionnaireRendererMode questionnaireMode = QuestionnaireRendererMode.FORM;
   private StructureDefinitionRendererMode structureMode = StructureDefinitionRendererMode.SUMMARY;
+  private FixedValueFormat fixedFormat = FixedValueFormat.JSON;
   
   private boolean addGeneratedNarrativeHeader = true;
   private boolean showComments = false;
@@ -188,8 +211,12 @@ public class RenderingContext {
   private boolean copyButton;
   private ProfileKnowledgeProvider pkp;
   private String changeVersion;
+  private List<String> files = new ArrayList<String>(); // files created as by-products in destDir
   
   private Map<KnownLinkType, String> links = new HashMap<>();
+  private Map<String, String> namedLinks = new HashMap<>();
+  private boolean addName = false;
+  
   /**
    * 
    * @param context - access to all related resources that might be needed
@@ -228,10 +255,6 @@ public class RenderingContext {
     res.contained = contained;
     
     res.noSlowLookup = noSlowLookup;
-    res.tooCostlyNoteEmpty = tooCostlyNoteEmpty;
-    res.tooCostlyNoteNotEmpty = tooCostlyNoteNotEmpty;
-    res.tooCostlyNoteEmptyDependent = tooCostlyNoteEmptyDependent;
-    res.tooCostlyNoteNotEmptyDependent = tooCostlyNoteNotEmptyDependent;
     res.codeSystemPropList.addAll(codeSystemPropList);
 
     res.profileUtilitiesR = profileUtilitiesR;
@@ -307,43 +330,6 @@ public class RenderingContext {
 
   public ValidationOptions getTerminologyServiceOptions() {
     return terminologyServiceOptions;
-  }
-
-
-  public String getTooCostlyNoteEmpty() {
-    return tooCostlyNoteEmpty;
-  }
-
-  public RenderingContext setTooCostlyNoteEmpty(String tooCostlyNoteEmpty) {
-    this.tooCostlyNoteEmpty = tooCostlyNoteEmpty;
-    return this;
-  }
-
-  public String getTooCostlyNoteNotEmpty() {
-    return tooCostlyNoteNotEmpty;
-  }
-
-  public RenderingContext setTooCostlyNoteNotEmpty(String tooCostlyNoteNotEmpty) {
-    this.tooCostlyNoteNotEmpty = tooCostlyNoteNotEmpty;
-    return this;
-  }
-
-  public String getTooCostlyNoteEmptyDependent() {
-    return tooCostlyNoteEmptyDependent;
-  }
-
-  public RenderingContext setTooCostlyNoteEmptyDependent(String tooCostlyNoteEmptyDependent) {
-    this.tooCostlyNoteEmptyDependent = tooCostlyNoteEmptyDependent;
-    return this;
-  }
-
-  public String getTooCostlyNoteNotEmptyDependent() {
-    return tooCostlyNoteNotEmptyDependent;
-  }
-
-  public RenderingContext setTooCostlyNoteNotEmptyDependent(String tooCostlyNoteNotEmptyDependent) {
-    this.tooCostlyNoteNotEmptyDependent = tooCostlyNoteNotEmptyDependent;
-    return this;
   }
 
   public int getHeaderLevelContext() {
@@ -700,8 +686,9 @@ public class RenderingContext {
   public GenerationRules getRules() {
     return rules;
   }
-  public void setRules(GenerationRules rules) {
+  public RenderingContext setRules(GenerationRules rules) {
     this.rules = rules;
+    return this;
   }
   public StandardsStatus getDefaultStandardsStatus() {
     return defaultStandardsStatus;
@@ -717,6 +704,38 @@ public class RenderingContext {
 
   public RenderingContext setChangeVersion(String changeVersion) {
     this.changeVersion = changeVersion;
+    return this;
+  }
+
+  public Map<String, String> getNamedLinks() {
+    return namedLinks;
+  }
+
+  public void registerFile(String n) {
+    try {
+      files.add(Utilities.path(destDir, n));
+    } catch (IOException e) {
+    }
+  }
+
+  public List<String> getFiles() {
+    return files;
+  }
+
+  public FixedValueFormat getFixedFormat() {
+    return fixedFormat;
+  }
+
+  public void setFixedFormat(FixedValueFormat fixedFormat) {
+    this.fixedFormat = fixedFormat;
+  }
+
+  public boolean isAddName() {
+    return addName;
+  }
+
+  public RenderingContext setAddName(boolean addName) {
+    this.addName = addName;
     return this;
   }
 

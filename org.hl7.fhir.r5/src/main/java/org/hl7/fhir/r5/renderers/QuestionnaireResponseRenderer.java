@@ -470,7 +470,7 @@ public class QuestionnaireResponseRenderer extends ResourceRenderer {
 //      CodeableConcept cc = i.getExtensionByUrl("http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse-displayCategory").getValueCodeableConcept();
 //      String code = cc.getCode("http://hl7.org/fhir/QuestionnaireResponse-display-category");
 //      hasFlag = true;
-//      flags.ah(getSDCLink("http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-QuestionnaireResponse-displayCategory", "Category: "+code).img(Utilities.path(context.getLocalPrefix(), "icon-qi-"+code+".png"));
+//      flags.ah("https://hl7.org/fhir/R4/extension-questionnaire-displayCategory.html", "Category: "+code).img(Utilities.path(context.getLocalPrefix(), "icon-qi-"+code+".png"));
 //    }
 //
 //    if (i.hasMaxLength()) {
@@ -492,7 +492,7 @@ public class QuestionnaireResponseRenderer extends ResourceRenderer {
 //          ans.ah(vs.getWebPath()).tx(vs.present());                              
 //        }
 //      } else {
-//        ValueSet vs = context.getWorker().fetchResource(ValueSet.class, i.getAnswerValueSet());
+//        ValueSet vs = context.getWorker().findTxResource(ValueSet.class, i.getAnswerValueSet());
 //        if (vs == null  || !vs.hasWebPath()) {
 //          ans.tx(i.getAnswerValueSet());                    
 //        } else {
@@ -579,7 +579,7 @@ public class QuestionnaireResponseRenderer extends ResourceRenderer {
 //          vs.setUrl("urn:uuid:"+UUID.randomUUID().toString().toLowerCase());
 //        }
 //      } else {
-//        vs = context.getContext().fetchResource(ValueSet.class, i.getAnswerValueSet());
+//        vs = context.getContext().findTxResource(ValueSet.class, i.getAnswerValueSet());
 //      }
 //      if (vs != null) {
 //        ValueSetExpansionOutcome exp = context.getContext().expandVS(vs, true, false);
@@ -707,7 +707,7 @@ public class QuestionnaireResponseRenderer extends ResourceRenderer {
 //    // content control
 //    defn(tbl, "Max Length", qi.getMaxLength());
 //    if (qi.hasAnswerValueSet()) {
-//      defn(tbl, "Value Set", qi.getDefinition(), context.getWorker().fetchResource(ValueSet.class,  qi.getAnswerValueSet()));
+//      defn(tbl, "Value Set", qi.getDefinition(), context.getWorker().findTxResource(ValueSet.class,  qi.getAnswerValueSet()));
 //    }
 //    if (qi.hasAnswerOption()) {
 //      XhtmlNode tr = tbl.tr();
@@ -742,7 +742,7 @@ public class QuestionnaireResponseRenderer extends ResourceRenderer {
 //      render(tr.td(), qi.getExtensionByUrl("http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse-displayCategory").getValue());
 //    }
 //    if (ToolingExtensions.readBoolExtension(qi, "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse-hidden")) {
-//      defn(tbl, "Hidden Item", "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse-displayCategory", "This item is a hidden question", null);
+//      defn(tbl, "Hidden Item", "https://hl7.org/fhir/R4/extension-questionnaire-displayCategory.html", "This item is a hidden question", null);
 //    }
 //    if (ToolingExtensions.readBoolExtension(qi, "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-QuestionnaireResponse-optionalDisplay")) {
 //      defn(tbl, "Hidden Item", "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-QuestionnaireResponse-optionalDisplay", "This item is optional to display", null);

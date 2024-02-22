@@ -56,6 +56,8 @@ public class CliContext {
   private HtmlInMarkdownCheck htmlInMarkdownCheck = HtmlInMarkdownCheck.WARNING;
   @JsonProperty("allowDoubleQuotesInFHIRPath")  
   private boolean allowDoubleQuotesInFHIRPath = false;
+  @JsonProperty("disableDefaultResourceFetcher")
+  private boolean disableDefaultResourceFetcher = false;
   @JsonProperty("checkIPSCodes")  
   private boolean checkIPSCodes;
   @JsonProperty("langTransform")
@@ -131,8 +133,8 @@ public class CliContext {
 
   @JsonProperty("outputStyle")
   private String outputStyle = null;
-  
-  // TODO: Mark what goes here?
+
+  @JsonProperty("bundleValidationRules")
   private List<BundleValidationRule> bundleValidationRules = new ArrayList<>();
 
   @JsonProperty("jurisdiction")
@@ -191,9 +193,15 @@ public class CliContext {
     return this;
   }
 
-  // TODO: Mark what goes here?
+  @JsonProperty("bundleValidationRules")
   public List<BundleValidationRule> getBundleValidationRules() {
    return bundleValidationRules;
+  }
+
+  @JsonProperty("bundleValidationRules")
+  public CliContext setBundleValidationRules(List<BundleValidationRule> bundleValidationRules) {
+    this.bundleValidationRules = bundleValidationRules;
+    return this;
   }
 
   public CliContext addIg(String ig) {
@@ -322,13 +330,28 @@ public class CliContext {
     this.allowDoubleQuotesInFHIRPath = allowDoubleQuotesInFHIRPath;
   }
 
+  @JsonProperty("disableDefaultResourceFetcher")
+  public boolean isDisableDefaultResourceFetcher() {
+    return disableDefaultResourceFetcher;
+  }
+
+  @JsonProperty("disableDefaultResourceFetcher")
+  public CliContext setDisableDefaultResourceFetcher(boolean disableDefaultResourceFetcher) {
+    this.disableDefaultResourceFetcher = disableDefaultResourceFetcher;
+    return this;
+  }
+
+  @JsonProperty("checkIPSCodes")
   public boolean isCheckIPSCodes() {
     return checkIPSCodes;
   }
 
-  public void setCheckIPSCodes(boolean checkIPSCodes) {
+  @JsonProperty("checkIPSCodes")
+  public CliContext setCheckIPSCodes(boolean checkIPSCodes) {
     this.checkIPSCodes = checkIPSCodes;
+    return this;
   }
+
 
   @JsonProperty("locale")
   public String getLanguageCode() {

@@ -20,7 +20,6 @@ import org.hl7.fhir.r5.conformance.profile.BindingResolution;
 import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
 import org.hl7.fhir.r5.conformance.profile.ProfileUtilities.ElementChoiceGroup;
 import org.hl7.fhir.r5.conformance.profile.ProfileUtilities.ExtensionContext;
-import org.hl7.fhir.r5.context.IWorkerContext.ValidationResult;
 import org.hl7.fhir.r5.formats.IParser;
 import org.hl7.fhir.r5.formats.IParser.OutputStyle;
 import org.hl7.fhir.r5.formats.JsonParser;
@@ -35,6 +34,7 @@ import org.hl7.fhir.r5.model.CodeType;
 import org.hl7.fhir.r5.model.CodeableConcept;
 import org.hl7.fhir.r5.model.Coding;
 import org.hl7.fhir.r5.model.DataType;
+import org.hl7.fhir.r5.model.DecimalType;
 import org.hl7.fhir.r5.model.Element;
 import org.hl7.fhir.r5.model.ElementDefinition;
 import org.hl7.fhir.r5.model.ElementDefinition.AdditionalBindingPurposeVS;
@@ -68,17 +68,21 @@ import org.hl7.fhir.r5.model.UriType;
 import org.hl7.fhir.r5.model.ValueSet;
 import org.hl7.fhir.r5.renderers.utils.BaseWrappers.ResourceWrapper;
 import org.hl7.fhir.r5.renderers.StructureDefinitionRenderer.InternalMarkdownProcessor;
+import org.hl7.fhir.r5.renderers.StructureDefinitionRenderer.RenderStyle;
 import org.hl7.fhir.r5.renderers.StructureDefinitionRenderer.SourcedElementDefinition;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext;
+import org.hl7.fhir.r5.renderers.utils.RenderingContext.FixedValueFormat;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.GenerationRules;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.KnownLinkType;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.StructureDefinitionRendererMode;
 import org.hl7.fhir.r5.renderers.utils.Resolver.ResourceContext;
+import org.hl7.fhir.r5.terminologies.utilities.ValidationResult;
 import org.hl7.fhir.r5.utils.PublicationHacker;
 import org.hl7.fhir.r5.utils.ToolingExtensions;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
 import org.hl7.fhir.utilities.MarkDownProcessor;
 import org.hl7.fhir.utilities.StandardsStatus;
+import org.hl7.fhir.utilities.TextFile;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
@@ -91,9 +95,14 @@ import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator.TableGenerationMo
 import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator.TableModel;
 import org.hl7.fhir.utilities.xhtml.NodeType;
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
+import org.hl7.fhir.utilities.xhtml.XhtmlNodeList;
 import org.hl7.fhir.utilities.xhtml.XhtmlParser;
 
 public class StructureDefinitionRenderer extends ResourceRenderer {
+
+  public enum RenderStyle {
+
+  }
 
   public class SourcedElementDefinition {
     private StructureDefinition profile;
@@ -536,6 +545,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     }
 
   }
+  
   public XhtmlNode generateTable(String defFile, StructureDefinition profile, boolean diff, String imageFolder, boolean inlineGraphics, String profileBaseFileName, boolean snapshot, String corePath, String imagePath,
       boolean logicalModel, boolean allInvariants, Set<String> outputTracker, boolean mustSupport, RenderingContext rc, String anchorPrefix) throws IOException, FHIRException {
     assert(diff != snapshot);// check it's ok to get rid of one of these
@@ -782,8 +792,9 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       UnusedTracker used = new UnusedTracker();
       String ref = defPath == null ? null : defPath + anchorPrefix + element.getId();
       String sName = tail(element.getPath());
-      if (element.hasSliceName())
+      if (element.hasSliceName()) { 
         sName = sName +":"+element.getSliceName();
+      }
       used.used = true;
       if (logicalModel) {
         if (element.hasRepresentation(PropertyRepresentation.XMLATTR)) {
@@ -1255,14 +1266,14 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     row.getCells().add(c);
 
     if (used) {
-      if (logicalModel && ToolingExtensions.hasExtension(profile, "http://hl7.org/fhir/StructureDefinition/elementdefinition-namespace")) {
+      if (logicalModel && ToolingExtensions.hasAnyOfExtensions(profile, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED)) {
         if (root) {
           c.getPieces().add(gen.new Piece(null, translate("sd.table", "XML Namespace")+": ", null).addStyle("font-weight:bold"));
-          c.getPieces().add(gen.new Piece(null, ToolingExtensions.readStringExtension(profile, "http://hl7.org/fhir/StructureDefinition/elementdefinition-namespace"), null));        
-        } else if (!root && ToolingExtensions.hasExtension(definition, "http://hl7.org/fhir/StructureDefinition/elementdefinition-namespace") && 
-            !ToolingExtensions.readStringExtension(definition, "http://hl7.org/fhir/StructureDefinition/elementdefinition-namespace").equals(ToolingExtensions.readStringExtension(profile, "http://hl7.org/fhir/StructureDefinition/elementdefinition-namespace"))) {
+          c.getPieces().add(gen.new Piece(null, ToolingExtensions.readStringExtension(profile, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED), null));        
+        } else if (!root && ToolingExtensions.hasAnyOfExtensions(definition, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED) && 
+            !ToolingExtensions.readStringExtension(definition, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED).equals(ToolingExtensions.readStringExtension(profile, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED))) {
           c.getPieces().add(gen.new Piece(null, translate("sd.table", "XML Namespace")+": ", null).addStyle("font-weight:bold"));
-          c.getPieces().add(gen.new Piece(null, ToolingExtensions.readStringExtension(definition, "http://hl7.org/fhir/StructureDefinition/elementdefinition-namespace"), null));        
+          c.getPieces().add(gen.new Piece(null, ToolingExtensions.readStringExtension(definition, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED), null));        
         }
       }
       if (root) {
@@ -1321,10 +1332,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
           String ref2 = null;
           String fixedUrl = null;
           if (ed != null) {
-            String p = ed.getWebPath();
-            if (p != null) {
-              ref = p.startsWith("http:") || context.getRules() == GenerationRules.IG_PUBLISHER ? p : Utilities.pathURL(corePath, p);
-            }             
+            String p = ed.getWebPath();           
             fixedUrl = getFixedUrl(ed);
             if (fixedUrl != null) {// if its null, we guess that it's not a profiled extension?
               if (fixedUrl.equals(url))
@@ -1415,27 +1423,22 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
           c.getPieces().add(gen.new Piece(null, translate("sd.table", "Choice Group")+": ", null).addStyle("font-weight:bold"));
           c.getPieces().add(gen.new Piece(null, "This is a repeating choice group that does not appear directly in the instance", null));
         }
-        if (definition.hasExtension(ToolingExtensions.EXT_XML_NAME)) {
+        if (definition.hasExtension(ToolingExtensions.EXT_XML_NAME, ToolingExtensions.EXT_XML_NAME_DEPRECATED)) {
           if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
-          if (definition.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE)) {
+          if (definition.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED)) {
             c.getPieces().add(gen.new Piece(null, translate("sd.table", "XML")+": ", null).addStyle("font-weight:bold"));
-            c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAME), null));
+            c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAME, ToolingExtensions.EXT_XML_NAME_DEPRECATED), null));
             c.getPieces().add(gen.new Piece(null, " (", null));
-            c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAMESPACE), null));
+            c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED), null));
             c.getPieces().add(gen.new Piece(null, ")", null));            
           } else {
             c.getPieces().add(gen.new Piece(null, translate("sd.table", "XML Element Name")+": ", null).addStyle("font-weight:bold"));
-            c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAME), null));
+            c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAME, ToolingExtensions.EXT_XML_NAME_DEPRECATED), null));
           }            
-        } else if (definition.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE)) {
+        } else if (definition.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED)) {
           if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
           c.getPieces().add(gen.new Piece(null, translate("sd.table", "XML Namespace")+": ", null).addStyle("font-weight:bold"));
-          c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAMESPACE), null));          
-        }
-        if (root && ToolingExtensions.readBoolExtension(profile, ToolingExtensions.EXT_XML_NO_ORDER)) {
-          if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
-          c.getPieces().add(gen.new Piece(null, translate("sd.table", "XML Order")+": ", null).addStyle("font-weight:bold"));
-          c.getPieces().add(gen.new Piece(null, "The properties of this type can appear in any order in the XML", null));   
+          c.getPieces().add(gen.new Piece(null, definition.getExtensionString(ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED), null));          
         }
         if (definition.hasExtension(ToolingExtensions.EXT_JSON_EMPTY)) {
           if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
@@ -1446,7 +1449,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
             c.getPieces().add(gen.new Piece(null, "JSON: This element may be present as a JSON Array even when there are no items in the instance", null));     
           }
         }
-        String jn = ToolingExtensions.readStringExtension(definition, ToolingExtensions.EXT_JSON_NAME);
+        String jn = ToolingExtensions.readStringExtension(definition, ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_NAME_DEPRECATED);
         if (!Utilities.noString(jn)) {
           if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
           if (definition.getPath().contains(".")) {
@@ -1507,7 +1510,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
             if (lt == null || !lt.hasValueBooleanType()) {
               if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
               c.addPiece(gen.new Piece(null, "Instances of this logical model are not marked to be the target of a Reference", null).addStyle("font-weight:bold"));  ;        
-            } else if (lt.getValue().hasExtension(ToolingExtensions.DAR)) {                 
+            } else if (lt.getValue().hasExtension(ToolingExtensions.EXT_DAR)) {                 
             } else if (!lt.getValueBooleanType().hasValue()) {
                 if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
                 c.addPiece(gen.new Piece(null, "Instances of this logical model are not marked to be the target of a Reference", null).addStyle("font-weight:bold"));  ;        
@@ -1527,6 +1530,19 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
                 c.addPiece(gen.new Piece(null, "Instances of this type are validated using an unknown approach: "+ps, null).addStyle("font-weight:bold"));
               }              
             }
+            Extension lc = ToolingExtensions.getExtension(profile, ToolingExtensions.EXT_LOGICAL_CONTAINER);
+            if (lc != null && lc.hasValueUriType()) {
+              if (!c.getPieces().isEmpty()) { c.addPiece(gen.new Piece("br")); }
+              c.getPieces().add(gen.new Piece(null, translate("sd.table", "Logical Container")+": ", "The root class that contains instances of this class").addStyle("font-weight:bold"));
+              
+              String uri = lc.getValue().primitiveValue();
+              StructureDefinition lct = context.getContext().fetchTypeDefinition(uri);
+              if (lct != null) {
+                c.addPiece(gen.new Piece(lct.getWebPath(), lct.present(), null));                       
+              } else {
+                c.addPiece(gen.new Piece(null, uri, null));                       
+              }
+            }
           }
         }
         if (definition != null) {
@@ -1540,7 +1556,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
               c.addPiece(gen.new Piece("br"));
             BindingResolution br = context.getPkp() == null ? makeNullBr(binding) : context.getPkp().resolveBinding(profile, binding, definition.getPath());
             c.getPieces().add(checkForNoChange(binding, gen.new Piece(null, translate("sd.table", "Binding")+": ", null).addStyle("font-weight:bold")));
-            c.getPieces().add(checkForNoChange(binding.getValueSetElement(), gen.new Piece(br.url == null ? null : Utilities.isAbsoluteUrl(br.url) || !context.getPkp().prependLinks() ? br.url : corePath+br.url, br.display, null)));
+            c.getPieces().add(checkForNoChange(binding.getValueSetElement(), checkAddExternalFlag(br, gen.new Piece(br.url == null ? null : Utilities.isAbsoluteUrl(br.url) || !context.getPkp().prependLinks() ? br.url : corePath+br.url, br.display, br.uri))));
             if (binding.hasStrength()) {
               c.getPieces().add(checkForNoChange(binding.getStrengthElement(), gen.new Piece(null, " (", null)));
               c.getPieces().add(checkForNoChange(binding.getStrengthElement(), gen.new Piece(corePath+"terminologies.html#"+binding.getStrength().toCode(), egt(binding.getStrengthElement()), binding.getStrength().getDefinition())));                            
@@ -1650,6 +1666,13 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       }
     }
     return c;
+  }
+
+  private Piece checkAddExternalFlag(BindingResolution br, Piece piece) {
+    if (br.external) {
+      piece.setTagImg("external.png");
+    }
+    return piece;
   }
 
   private boolean isAttr(SourcedElementDefinition ed) {
@@ -2365,10 +2388,11 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
               c.addPiece(gen.new Piece("br"));
             BindingResolution br = context.getPkp().resolveBinding(profile, binding, definition.getPath());
             c.getPieces().add(checkForNoChange(binding, gen.new Piece(null, "Binding: ", null).addStyle("font-weight:bold")));
-            c.getPieces().add(checkForNoChange(binding, gen.new Piece(br.url == null ? null : Utilities.isAbsoluteUrl(br.url) || !context.getPkp().prependLinks() ? br.url : corePath+br.url, br.display, null)));
+            c.getPieces().add(checkForNoChange(binding, checkAddExternalFlag(br, gen.new Piece(br.url == null ? null : Utilities.isAbsoluteUrl(br.url) || !context.getPkp().prependLinks() ? br.url : corePath+br.url, br.display, br.uri))));
             if (binding.hasStrength()) {
               c.getPieces().add(checkForNoChange(binding, gen.new Piece(null, " (", null)));
-              c.getPieces().add(checkForNoChange(binding, gen.new Piece(corePath+"terminologies.html#"+binding.getStrength().toCode(), binding.getStrength().toCode(), binding.getStrength().getDefinition())));              c.getPieces().add(gen.new Piece(null, ")", null));
+              c.getPieces().add(checkForNoChange(binding, gen.new Piece(corePath+"terminologies.html#"+binding.getStrength().toCode(), binding.getStrength().toCode(), binding.getStrength().getDefinition())));              
+              c.getPieces().add(gen.new Piece(null, ")", null));
             }
             if (binding.hasDescription() && MarkDownProcessor.isSimpleMarkdown(binding.getDescription())) {
               c.getPieces().add(gen.new Piece(null, ": ", null));
@@ -3078,7 +3102,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       c.addPiece(gen.new Piece("br"));
       BindingResolution br = context.getPkp().resolveBinding(ed, ved.getBinding(), ved.getPath());
       c.getPieces().add(checkForNoChange(ved.getBinding(), gen.new Piece(null, translate("sd.table", "Binding")+": ", null).addStyle("font-weight:bold")));
-      c.getPieces().add(checkForNoChange(ved.getBinding(), gen.new Piece(br.url == null ? null : Utilities.isAbsoluteUrl(br.url) || !context.getPkp().prependLinks() ? br.url : corePath+br.url, br.display, null)));
+      c.getPieces().add(checkForNoChange(ved.getBinding(), checkAddExternalFlag(br, gen.new Piece(br.url == null ? null : Utilities.isAbsoluteUrl(br.url) || !context.getPkp().prependLinks() ? br.url : corePath+br.url, br.display, br.uri))));
       if (ved.getBinding().hasStrength()) {
         c.getPieces().add(checkForNoChange(ved.getBinding(), gen.new Piece(null, " (", null)));
         c.getPieces().add(checkForNoChange(ved.getBinding(), gen.new Piece(corePath+"terminologies.html#"+ved.getBinding().getStrength().toCode(), egt(ved.getBinding().getStrengthElement()), ved.getBinding().getStrength().getDefinition())));              
@@ -3289,6 +3313,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
           if (!tl.contains(tc)) {
             aliases.add(name.replace("[x]", Utilities.capitalize(tc)));
             aliases.add(name+":"+name.replace("[x]", Utilities.capitalize(tc)));
+            aliases.add(name.replace("[x]", Utilities.capitalize(tc))+":"+name.replace("[x]", Utilities.capitalize(tc)));
             tl.add(tc);
           }
         }
@@ -3308,7 +3333,6 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       list.addAll(generated);
     }
     ElementDefinition ed = stack.get(stack.size()-1);
-
     // now we have all the possible names, but some of them might be inappropriate if we've
     // already generated a type slicer. On the other hand, if we've already done that, we're
     // going to steal any type specific ones off it.
@@ -3381,55 +3405,68 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
   }
       
   public XhtmlNode compareMarkdown(String location, PrimitiveType md, PrimitiveType compare, int mode) throws FHIRException, IOException {
+    XhtmlNode ndiv = new XhtmlNode(NodeType.Element, "div");
     if (compare == null || mode == GEN_MODE_DIFF) {
       if (md.hasValue()) {
         String xhtml = hostMd.processMarkdown(location, md);
         if (Utilities.noString(xhtml)) {
           return null;
         }
-        XhtmlNode x = new XhtmlNode(NodeType.Element, "div");
         try {
-          renderStatusDiv(md, x).add(new XhtmlParser().parseFragment(xhtml));
+          renderStatusDiv(md, ndiv).addChildren(fixFontSizes(new XhtmlParser().parseMDFragment(xhtml), 11));
         } catch (Exception e) {
-          x.span("color: maroon").tx(e.getLocalizedMessage());          
+          ndiv.span("color: maroon").tx(e.getLocalizedMessage());       
+          e.printStackTrace();
         }
-        return x;
+        return ndiv;
       } else {
         return null;
       }
     } else if (areEqual(compare, md)) {
       if (md.hasValue()) {
-        String xhtml = "<div>"+hostMd.processMarkdown(location, md)+"</div>";
-        XhtmlNode div = new XhtmlParser().parseFragment(xhtml);
-        for (XhtmlNode n : div.getChildNodes()) {
+        String xhtml = hostMd.processMarkdown(location, md);
+        List<XhtmlNode> nodes = new XhtmlParser().parseMDFragment(xhtml);
+        for (XhtmlNode n : nodes) {
           if (n.getNodeType() == NodeType.Element) {
             n.style(unchangedStyle());
           }
         }
-        return div;
+        ndiv.addChildren(nodes);
+        return ndiv;
       } else {
         return null;
       }
     } else {
-      XhtmlNode ndiv = new XhtmlNode(NodeType.Element, "div");
       if (md.hasValue()) {
-        String xhtml = "<div>"+hostMd.processMarkdown(location, md)+"</div>";
-        XhtmlNode div = new XhtmlParser().parseFragment(xhtml);
-        ndiv.copyAllContent(div);
+        String xhtml = hostMd.processMarkdown(location, md);
+        List<XhtmlNode> div = new XhtmlParser().parseMDFragment(xhtml);
+        ndiv.addChildren(div);
       }
       if (compare.hasValue()) {
         String xhtml = "<div>"+hostMd.processMarkdown(location, compare)+"</div>";
-        XhtmlNode div = new XhtmlParser().parseFragment(xhtml);
-        for (XhtmlNode n : div.getChildNodes()) {
+        List<XhtmlNode> div = new XhtmlParser().parseMDFragment(xhtml);
+        for (XhtmlNode n : div) {
           if (n.getNodeType() == NodeType.Element) {
             n.style(removedStyle());
           }
         }
         ndiv.br();
-        ndiv.copyAllContent(div);
+        ndiv.addChildren(div);
       }
       return ndiv;
     }
+  }
+
+  private List<XhtmlNode> fixFontSizes(List<XhtmlNode> nodes, int size) {
+    for (XhtmlNode x : nodes) {
+      if (Utilities.existsInList(x.getName(), "p", "li") && !x.hasAttribute("style")) {
+        x.style("font-size: "+size+"px");
+      }
+      if (x.hasChildren()) {
+        fixFontSizes(x.getChildNodes(), size);
+      }
+    }
+    return nodes;
   }
 
   private boolean areEqual(PrimitiveType compare, PrimitiveType md) {
@@ -3447,14 +3484,18 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     return false;
   }
 
-  public XhtmlNode compareString(String newStr, Base source, String nLink, String name, Base parent, String oldStr, String oLink, int mode) {
+  public XhtmlNode compareString(String newStr, Base source, String nLink, String name, Base parent, String oldStr, String oLink, int mode, boolean externalN, boolean externalO) {    
+    return compareString(newStr, source, nLink, name, parent, oldStr, oLink, mode, externalN, externalO, false);
+  }
+  
+  public XhtmlNode compareString(String newStr, Base source, String nLink, String name, Base parent, String oldStr, String oLink, int mode, boolean externalN, boolean externalO, boolean code) {
     XhtmlNode x = new XhtmlNode(NodeType.Element, "div");
     if (mode != GEN_MODE_KEY) {
       if (newStr != null) {
-        renderStatus(source, x).ah(nLink).tx(newStr);
+        renderStatus(source, x).ah(nLink).txOrCode(code, newStr).iff(externalN).txN(" ").img("external.png", null);
       } else if (VersionComparisonAnnotation.hasDeleted(parent, name)) {
         PrimitiveType p = (PrimitiveType) VersionComparisonAnnotation.getDeletedItem(parent, name);
-        renderStatus(p, x).tx(p.primitiveValue());        
+        renderStatus(p, x).txOrCode(code, p.primitiveValue());        
       } else {
         return null;
       }
@@ -3462,33 +3503,33 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       if (newStr==null || newStr.isEmpty()) {
         return null;
       } else {
-        renderStatus(source, x).ah(nLink).tx(newStr);
+        renderStatus(source, x).ah(nLink).txOrCode(code, newStr).iff(externalN).txN(" ").img("external.png", null);
       }
     } else if (oldStr!=null && !oldStr.isEmpty() && (newStr==null || newStr.isEmpty())) {
       if (mode == GEN_MODE_DIFF) {
         return null;
       } else {
-        removed(x).ah(oLink).tx(oldStr);
+        removed(x).ah(oLink).txOrCode(code, oldStr).iff(externalO).txN(" ").img("external.png", null);
       }
     } else if (oldStr.equals(newStr)) {
       if (mode==GEN_MODE_DIFF) {
         return null;
       } else {
-        unchanged(x).ah(nLink).tx(newStr);
+        unchanged(x).ah(nLink).txOrCode(code, newStr).iff(externalN).txN(" ").img("external.png", null);
       }
     } else if (newStr.startsWith(oldStr)) {
-      unchanged(x).ah(oLink).tx(oldStr);
-      renderStatus(source, x).ah(nLink).tx(newStr.substring(oldStr.length()));
+      unchanged(x).ah(oLink).txOrCode(code, oldStr).iff(externalO).txN(" ").img("external.png", null);
+      renderStatus(source, x).ah(nLink).txN(newStr.substring(oldStr.length())).iff(externalN).txN(" ").img("external.png", null);
     } else {
       // TODO: improve comparision in this fall-through case, by looking for matches in sub-paragraphs?
-      renderStatus(source, x).ah(nLink).tx(newStr);
-      removed(x).ah(oLink).tx(oldStr);
+      renderStatus(source, x).ah(nLink).txOrCode(code, newStr).iff(externalN).txN(" ").img("external.png", null);
+      removed(x).ah(oLink).txOrCode(code, oldStr).iff(externalO).txN(" ").img("external.png", null);
     }
     return x;
   }
 
-  public boolean compareString(XhtmlNode x, String newStr, Base source, String nLink, String name, Base parent, String oldStr, String oLink, int mode) {
-    XhtmlNode x1 = compareString(newStr, source, nLink, name, parent, oldStr, oLink, mode);
+  public boolean compareString(XhtmlNode x, String newStr, Base source, String nLink, String name, Base parent, String oldStr, String oLink, int mode, boolean externalN, boolean externalO) {
+    XhtmlNode x1 = compareString(newStr, source, nLink, name, parent, oldStr, oLink, mode, externalN, externalO);
     if (x1 == null) {
       return false;
     } else {
@@ -3518,12 +3559,12 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     boolean slicedExtension = d.hasSliceName() && (d.getPath().endsWith(".extension") || d.getPath().endsWith(".modifierExtension"));
 //    int slicedExtensionMode = (mode == GEN_MODE_KEY) && slicedExtension ? GEN_MODE_SNAP : mode; // see ProfileUtilities.checkExtensionDoco / Task 3970
     if (d.hasSliceName()) {
-      tableRow(tbl, "Slice Name", "profiling.html#slicing", strikethrough, compareString(d.getSliceName(), d.getSliceNameElement(), null, (compare != null ? compare.getSliceName() : null), d, null, "sliceName", mode));   
-      tableRow(tbl, "Slice Constraining", "profiling.html#slicing", strikethrough, compareString(encodeValue(d.getSliceIsConstrainingElement()), d.getSliceIsConstrainingElement(), null, (compare != null ? encodeValue(compare.getSliceIsConstrainingElement()) : null), d, null, "sliceName", mode));   
+      tableRow(tbl, "Slice Name", "profiling.html#slicing", strikethrough, compareString(d.getSliceName(), d.getSliceNameElement(), null, (compare != null ? compare.getSliceName() : null), d, null, "sliceName", mode, false, false));   
+      tableRow(tbl, "Slice Constraining", "profiling.html#slicing", strikethrough, compareString(encodeValue(d.getSliceIsConstrainingElement(), null), d.getSliceIsConstrainingElement(), null, (compare != null ? encodeValue(compare.getSliceIsConstrainingElement(), null) : null), d, null, "sliceName", mode, false, false));   
     }
 
     tableRow(tbl, "Definition", null, strikethrough, compareMarkdown(sd.getName(), d.getDefinitionElement(), (compare==null) || slicedExtension ? null : compare.getDefinitionElement(), mode));
-    tableRow(tbl, "Short", null, strikethrough, compareString(d.hasShort() ? d.getShort() : null, d.getShortElement(), null, "short", d, compare!= null && compare.hasShortElement() ? compare.getShort() : null, null, mode));
+    tableRow(tbl, "Short", null, strikethrough, compareString(d.hasShort() ? d.getShort() : null, d.getShortElement(), null, "short", d, compare!= null && compare.hasShortElement() ? compare.getShort() : null, null, mode, false, false));
     tableRow(tbl, "Comments", null, strikethrough, compareMarkdown(sd.getName(), d.getCommentElement(), (compare==null) || slicedExtension ? null : compare.getCommentElement(), mode));
     tableRow(tbl, "Note", null, strikethrough, businessIdWarning(sd.getName(), tail(d.getPath())));
     tableRow(tbl, "Control", "conformance-rules.html#conformance", strikethrough, describeCardinality(d, compare, mode)); 
@@ -3565,7 +3606,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       Extension lt = ToolingExtensions.getExtension(sd, ToolingExtensions.EXT_LOGICAL_TARGET);
       if (lt == null || !lt.hasValue()) {
         tableRow(tbl, "Logical Model", null, strikethrough, "Instances of this logical model are not marked to be the target of a Reference");        
-      } else if (lt.getValue().hasExtension(ToolingExtensions.DAR)) {        
+      } else if (lt.getValue().hasExtension(ToolingExtensions.EXT_DAR)) {        
       } else if (lt.getValueBooleanType().hasValue()) {
         tableRow(tbl, "Logical Model", null, strikethrough, "Instances of this logical model are not marked to be the target of a Reference");        
       } else if (lt.getValueBooleanType().booleanValue()) {
@@ -3573,6 +3614,18 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       } else {
         tableRow(tbl, "Logical Model", null, strikethrough, "Instances of this logical model cannot be the target of a Reference");
       }
+
+      Extension lc = ToolingExtensions.getExtension(sd, ToolingExtensions.EXT_LOGICAL_CONTAINER);
+      if (lc != null && lc.hasValueUriType()) {
+        String uri = lc.getValue().primitiveValue();
+        StructureDefinition lct = context.getContext().fetchTypeDefinition(uri);
+        if (lct != null) {
+          tableRowLink(tbl, "Logical Container", null, strikethrough, lct.present(), lct.getWebPath());        
+        } else {
+          tableRow(tbl, "Logical Container", null, strikethrough, uri);        
+        }
+      }
+      
       String ps = ToolingExtensions.readStringExtension(sd, ToolingExtensions.EXT_PROFILE_STYLE);
       if (ps != null) {
         if ("cda".equals(ps)) {
@@ -3628,11 +3681,12 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     }
     
     // tooling extensions for formats
-    if (ToolingExtensions.hasExtensions(d, ToolingExtensions.EXT_JSON_EMPTY, ToolingExtensions.EXT_JSON_PROP_KEY, ToolingExtensions.EXT_JSON_NULLABLE, 
-        ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_PRIMITIVE_CHOICE)) {
+    if (ToolingExtensions.hasAnyOfExtensions(d, ToolingExtensions.EXT_JSON_EMPTY, ToolingExtensions.EXT_JSON_PROP_KEY, ToolingExtensions.EXT_JSON_NULLABLE, 
+        ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_NAME_DEPRECATED, ToolingExtensions.EXT_JSON_PRIMITIVE_CHOICE)) {
       tableRow(tbl, "JSON Format", null, strikethrough,  describeJson(d));          
     }
-    if (d.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE) || sd.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE) || d.hasExtension(ToolingExtensions.EXT_XML_NAME) || (root && sd.hasExtension(ToolingExtensions.EXT_XML_NO_ORDER)) ||
+    if (d.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED) || sd.hasExtension(ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED) || 
+        d.hasExtension(ToolingExtensions.EXT_XML_NAME, ToolingExtensions.EXT_XML_NAME_DEPRECATED) || sd.hasExtension(ToolingExtensions.EXT_XML_NAME, ToolingExtensions.EXT_XML_NAME_DEPRECATED) ||
         d.hasRepresentation()) {
       tableRow(tbl, "XML Format", null, strikethrough, describeXml(sd, d, root));          
     }
@@ -3660,18 +3714,18 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       tableRow(tbl, "Summary", "search.html#summary", strikethrough, Boolean.toString(d.getIsSummary()));
     }
     tableRow(tbl, "Requirements", null, strikethrough, compareMarkdown(sd.getName(), d.getRequirementsElement(), (compare==null) || slicedExtension ? null : compare.getRequirementsElement(), mode));
-    tableRow(tbl, "Label", null, strikethrough, compareString(d.getLabel(), d.getLabelElement(), null, "label", d, (compare != null ? compare.getLabel() : null), null, mode));   
+    tableRow(tbl, "Label", null, strikethrough, compareString(d.getLabel(), d.getLabelElement(), null, "label", d, (compare != null ? compare.getLabel() : null), null, mode, false, false));   
     tableRow(tbl, "Alternate Names", null, strikethrough, compareSimpleTypeLists(d.getAlias(), ((compare==null) || slicedExtension ? null : compare.getAlias()), mode));
     tableRow(tbl, "Definitional Codes", null, strikethrough, compareDataTypeLists(d.getCode(), ((compare==null) || slicedExtension ? null : compare.getCode()), mode));
-    tableRow(tbl, "Min Value", null, strikethrough, compareString(d.hasMinValue() ? encodeValue(d.getMinValue()) : null, d.getMinValue(), null, "minValue", d, compare!= null && compare.hasMinValue() ? encodeValue(compare.getMinValue()) : null, null, mode));
-    tableRow(tbl, "Max Value", null, strikethrough, compareString(d.hasMaxValue() ? encodeValue(d.getMaxValue()) : null, d.getMaxValue(), null, "maxValue", d, compare!= null && compare.hasMaxValue() ? encodeValue(compare.getMaxValue()) : null, null, mode));
-    tableRow(tbl, "Max Length", null, strikethrough, compareString(d.hasMaxLength() ? toStr(d.getMaxLength()) : null, d.getMaxLengthElement(), null, "maxLength", d, compare!= null && compare.hasMaxLengthElement() ? toStr(compare.getMaxLength()) : null, null, mode));
-    tableRow(tbl, "Value Required", null, strikethrough, compareString(encodeValue(d.getMustHaveValueElement()), d.getMustHaveValueElement(), null, (compare != null ? encodeValue(compare.getMustHaveValueElement()) : null), d, null, "mustHaveValueElement", mode));   
+    tableRow(tbl, "Min Value", null, strikethrough, compareString(d.hasMinValue() ? encodeValue(d.getMinValue(), null) : null, d.getMinValue(), null, "minValue", d, compare!= null && compare.hasMinValue() ? encodeValue(compare.getMinValue(), null) : null, null, mode, false, false));
+    tableRow(tbl, "Max Value", null, strikethrough, compareString(d.hasMaxValue() ? encodeValue(d.getMaxValue(), null) : null, d.getMaxValue(), null, "maxValue", d, compare!= null && compare.hasMaxValue() ? encodeValue(compare.getMaxValue(), null) : null, null, mode, false, false));
+    tableRow(tbl, "Max Length", null, strikethrough, compareString(d.hasMaxLength() ? toStr(d.getMaxLength()) : null, d.getMaxLengthElement(), null, "maxLength", d, compare!= null && compare.hasMaxLengthElement() ? toStr(compare.getMaxLength()) : null, null, mode, false, false));
+    tableRow(tbl, "Value Required", null, strikethrough, compareString(encodeValue(d.getMustHaveValueElement(), null), d.getMustHaveValueElement(), null, (compare != null ? encodeValue(compare.getMustHaveValueElement(), null) : null), d, null, "mustHaveValueElement", mode, false, false));   
     tableRow(tbl, "Value Alternatives", null, strikethrough, compareSimpleTypeLists(d.getValueAlternatives(), ((compare==null) || slicedExtension ? null : compare.getValueAlternatives()), mode));
-    tableRow(tbl, "Default Value", null, strikethrough, encodeValue(d.getDefaultValue(), "defaultValue", d, compare==null ? null : compare.getDefaultValue(), mode));
+    tableRow(tbl, "Default Value", null, strikethrough, encodeValue(d.getDefaultValue(), "defaultValue", d, compare==null ? null : compare.getDefaultValue(), mode, d.getName()));
     tableRow(tbl, "Meaning if Missing", null, strikethrough, d.getMeaningWhenMissing());
-    tableRow(tbl, "Fixed Value", null, strikethrough, encodeValue(d.getFixed(), "fixed", d, compare==null ? null : compare.getFixed(), mode));
-    tableRow(tbl, "Pattern Value", null, strikethrough, encodeValue(d.getPattern(), "pattern", d, compare==null ? null : compare.getPattern(), mode));
+    tableRow(tbl, "Fixed Value", null, strikethrough, encodeValue(d.getFixed(), "fixed", d, compare==null ? null : compare.getFixed(), mode, d.getName()));
+    tableRow(tbl, "Pattern Value", null, strikethrough, encodeValue(d.getPattern(), "pattern", d, compare==null ? null : compare.getPattern(), mode, d.getName()));
     tableRow(tbl, "Example", null, strikethrough, encodeValues(d.getExample()));
     tableRow(tbl, "Invariants", null, strikethrough, invariants(d.getConstraint(), compare==null ? null : compare.getConstraint(), d, mode));
     tableRow(tbl, "LOINC Code", null, strikethrough, getMapping(sd, d, LOINC_MAPPING, compare, mode));
@@ -3680,9 +3734,9 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
   }
   
   private XhtmlNode presentModifier(ElementDefinition d, int mode, ElementDefinition compare) throws FHIRException, IOException {
-    XhtmlNode x1 = compareString(encodeValue(d.getIsModifierElement()), d.getIsModifierElement(), null, "isModifier", d, compare == null ? null : encodeValue(compare.getIsModifierElement()), null, mode);
+    XhtmlNode x1 = compareString(encodeValue(d.getIsModifierElement(), null), d.getIsModifierElement(), null, "isModifier", d, compare == null ? null : encodeValue(compare.getIsModifierElement(), null), null, mode, false, false);
     if (x1 != null) {
-      XhtmlNode x2 = compareString(encodeValue(d.getIsModifierReasonElement()), d.getIsModifierReasonElement(), null, "isModifierReason", d, compare == null ? null : encodeValue(compare.getIsModifierReasonElement()), null, mode);
+      XhtmlNode x2 = compareString(encodeValue(d.getIsModifierReasonElement(), null), d.getIsModifierReasonElement(), null, "isModifierReason", d, compare == null ? null : encodeValue(compare.getIsModifierReasonElement(), null), null, mode, false, false);
       if (x2 != null) {
         x1.tx(" because ");
         x1.copyAllContent(x2);
@@ -3719,20 +3773,16 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
         }
       }
     }
-    String name = ToolingExtensions.readStringExtension(d, ToolingExtensions.EXT_XML_NAMESPACE);
+    String name = ToolingExtensions.readStringExtension(d, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED);
     if (name == null && root) {
-      name = ToolingExtensions.readStringExtension(profile, ToolingExtensions.EXT_XML_NAMESPACE);
+      name = ToolingExtensions.readStringExtension(profile, ToolingExtensions.EXT_XML_NAMESPACE, ToolingExtensions.EXT_XML_NAMESPACE_DEPRECATED);
     }
     if (name != null) {
       ret.codeWithText("In the XML format, this property has the namespace ", name, ".");
     }
-    name = ToolingExtensions.readStringExtension(d, ToolingExtensions.EXT_XML_NAME);
+    name = ToolingExtensions.readStringExtension(d, ToolingExtensions.EXT_XML_NAME, ToolingExtensions.EXT_XML_NAME_DEPRECATED);
     if (name != null) {
       ret.codeWithText("In the XML format, this property has the actual name", name, ".");
-    }
-    boolean no = root && ToolingExtensions.readBoolExtension(profile, ToolingExtensions.EXT_XML_NO_ORDER);
-    if (no) {
-      ret.tx("The children of this type can appear in any order in the XML.");
     }
     return ret;
   }
@@ -3740,7 +3790,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
   private XhtmlNode describeJson(ElementDefinition d) {
     XhtmlNode ret = new XhtmlNode(NodeType.Element, "div");
     var ul = ret.ul();
-    boolean list = ToolingExtensions.countExtensions(d, ToolingExtensions.EXT_JSON_EMPTY, ToolingExtensions.EXT_JSON_PROP_KEY, ToolingExtensions.EXT_JSON_NULLABLE, ToolingExtensions.EXT_JSON_NAME) > 1;
+    boolean list = ToolingExtensions.countExtensions(d, ToolingExtensions.EXT_JSON_EMPTY, ToolingExtensions.EXT_JSON_PROP_KEY, ToolingExtensions.EXT_JSON_NULLABLE, ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_NAME_DEPRECATED) > 1;
 
     String code = ToolingExtensions.readStringExtension(d, ToolingExtensions.EXT_JSON_EMPTY);
     if (code != null) {
@@ -3756,7 +3806,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
         break;
       }
     }
-    String jn = ToolingExtensions.readStringExtension(d, ToolingExtensions.EXT_JSON_NAME);
+    String jn = ToolingExtensions.readStringExtension(d, ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_NAME_DEPRECATED);
     if (jn != null) {
       if (d.getPath().contains(".")) {
         ul.li().codeWithText("This property appears in JSON with the property name ", jn, null);
@@ -3828,7 +3878,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     DataType au = ToolingExtensions.getAllowedUnits(d);
     if (au instanceof CanonicalType) {
       String url = ((CanonicalType) au).asStringValue();
-      ValueSet vs = context.getContext().fetchResource(ValueSet.class, url);
+      ValueSet vs = context.getContext().findTxResource(ValueSet.class, url);
       ret.tx("Value set ");         
       genCT(ret, url, vs);
       return ret;
@@ -3919,9 +3969,9 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     x.codeWithText("This element introduces a set of slices on ", ed.getPath(), ". The slices are ");
     String newOrdered = sliceOrderString(slicing);
     String oldOrdered = (compare==null || !compare.hasSlicing()) ? null : sliceOrderString(compare.getSlicing());
-    compareString(x, newOrdered, slicing.getOrderedElement(), null, null, null, oldOrdered, null, mode);
+    compareString(x, newOrdered, slicing.getOrderedElement(), null, null, null, oldOrdered, null, mode, false, false);
     x.tx(" and ");
-    compareString(x, slicing.hasRules() ? slicing.getRules().getDisplay() : null, slicing.getRulesElement(), null, "rules", slicing, compare!=null && compare.hasSlicing() && compare.getSlicing().hasRules() ? compare.getSlicing().getRules().getDisplay() : null, null, mode);
+    compareString(x, slicing.hasRules() ? slicing.getRules().getDisplay() : null, slicing.getRulesElement(), null, "rules", slicing, compare!=null && compare.hasSlicing() && compare.getSlicing().hasRules() ? compare.getSlicing().getRules().getDisplay() : null, null, mode, false, false);
     
     if (slicing.hasDiscriminator()) {
       x.tx(", and can be differentiated using the following discriminators: ");
@@ -3934,7 +3984,6 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
           list.merge(new DiscriminatorWithStatus(d));
         }
       }
-      x.tx(", and can be differentiated using the following discriminators: ");
       var ul = x.ul();
       for (DiscriminatorWithStatus rc : list) {
         rc.render(x.li());
@@ -3975,6 +4024,17 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       }
       addFirstCell(name, defRef, tr);
       tr.td().tx(text);
+    }
+  }
+
+  private void tableRowLink(XhtmlNode x, String name, String defRef, boolean strikethrough, String text, String link) throws IOException {
+    if (!Utilities.noString(text)) {
+      var tr = x.tr();
+      if (strikethrough) {
+        tr.style("text-decoration: line-through");
+      }
+      addFirstCell(name, defRef, tr);
+      tr.td().ah(link).tx(text);
     }
   }
 
@@ -4038,11 +4098,11 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       }
     } else {
       if (!(mode==GEN_MODE_DIFF && (d.getMin()==compare.getMin() || d.getMin()==0))) {
-        compareString(x, toStr(d.getMin()), d.getMinElement(), null, "min", d, toStr(compare.getMin()), null, mode);
+        compareString(x, toStr(d.getMin()), d.getMinElement(), null, "min", d, toStr(compare.getMin()), null, mode, false, false);
       }
       x.tx("..");
       if (!(mode==GEN_MODE_DIFF && (d.getMax().equals(compare.getMax()) || "1".equals(d.getMax())))) {
-        compareString(x, d.getMax(), d.getMaxElement(), null, "max", d, compare.getMax(), null, mode);
+        compareString(x, d.getMax(), d.getMaxElement(), null, "max", d, compare.getMax(), null, mode, false, false);
       }
     }
     XhtmlNode t = compareSimpleTypeLists(d.getCondition(), compare == null ? null : compare.getCondition(), mode);
@@ -4157,9 +4217,9 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
 
     boolean ts = false;
     if (t.getWorkingCode().startsWith("xs:")) {
-      ts = compareString(x, t.getWorkingCode(), t, null, "code", t, compare==null ? null : compare.getWorkingCode(), null, mode);
+      ts = compareString(x, t.getWorkingCode(), t, null, "code", t, compare==null ? null : compare.getWorkingCode(), null, mode, false, false);
     } else {
-      ts = compareString(x, t.getWorkingCode(), t, getTypeLink(t, sd), "code", t, compare==null ? null : compare.getWorkingCode(), compare==null ? null : getTypeLink(compare, sd), mode);
+      ts = compareString(x, t.getWorkingCode(), t, getTypeLink(t, sd), "code", t, compare==null ? null : compare.getWorkingCode(), compare==null ? null : getTypeLink(compare, sd), mode, false, false);
     }
     
     if ((!mustSupportOnly && (t.hasProfile() || (compare!=null && compare.hasProfile()))) || isMustSupport(t.getProfile())) {
@@ -4272,7 +4332,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
   private XhtmlNode displayBoolean(boolean value, BooleanType source, String name, Base parent, BooleanType compare, int mode) {
     String newValue = value ? "true" : source.hasValue() ? "false" : null;
     String oldValue = compare==null || compare.getValue()==null ? null : (compare.getValue()!=true ? null : "true");
-    return compareString(newValue, source, null, name, parent, oldValue, null, mode);
+    return compareString(newValue, source, null, name, parent, oldValue, null, mode, false, false);
   }
 
 
@@ -4316,7 +4376,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
         MarkdownType newBinding = PublicationHacker.fixBindingDescriptions(context.getContext(), binding.getDescriptionElement());
         if (mode == GEN_MODE_SNAP || mode == GEN_MODE_MS) {
           bindingDesc = new XhtmlNode(NodeType.Element, "div");
-          bindingDesc.add(new XhtmlParser().parseFragment(hostMd.processMarkdown("Binding.description", newBinding)));
+          bindingDesc.addChildren(new XhtmlParser().parseMDFragment(hostMd.processMarkdown("Binding.description", newBinding)));
         } else {
 
           StringType oldBinding = compBinding != null && compBinding.hasDescription() ? PublicationHacker.fixBindingDescriptions(context.getContext(), compBinding.getDescriptionElement()) : null;
@@ -4360,16 +4420,32 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
     }
   }
 
-
   private boolean isSimpleContent(XhtmlNode bindingDesc) {
     return bindingDesc.getChildNodes().size() == 1 && bindingDesc.getChildNodes().get(0).isPara();
   }
 
   private void renderBinding(XhtmlNode span, ElementDefinitionBindingComponent binding, ElementDefinitionBindingComponent compare, String path, StructureDefinition sd, int mode) {
-    compareString(span, conf(binding), binding.getStrengthElement(), null, "strength", binding, compare == null ? null : conf(compare), null, mode);
+    compareString(span, conf(binding), binding.getStrengthElement(), null, "strength", binding, compare == null ? null : conf(compare), null, mode, false, false);
     span.tx(" ");
     BindingResolution br = context.getPkp().resolveBinding(sd, binding, path);
-    compareString(span, br.display, binding.getValueSetElement(), br.url, "valueSet", binding, compare == null ? null : compare.getValueSet(), null, mode);
+    compareString(span, br.display, binding.getValueSetElement(), br.url, "valueSet", binding, compare == null ? null : compare.getValueSet(), null, mode, br.external, false);
+    if (binding.hasStrength() || binding.hasValueSet()) {
+      span.br();
+      span.tx("(");
+      if (binding.hasStrength()) {
+        span.ah(Utilities.pathURL(corePath, "terminologies.html#"+binding.getStrength().toCode())).tx(binding.getStrength().toCode());
+      }
+      if (binding.hasStrength() && binding.hasValueSet()) {
+        span.tx(" ");
+      }
+      if (binding.hasValueSet()) {
+        span.tx("to ");
+        XhtmlNode ispan = span.spanClss("copy-text-inline");
+        ispan.code().tx(binding.getValueSet());
+        ispan.button("btn-copy", "Click to Copy URL").attribute("data-clipboard-text", binding.getValueSet());
+      }
+      span.tx(")");
+    }
   }
 
   private String stripPara(String s) {
@@ -4408,37 +4484,55 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
         first = false;
       else
         b.append("<br/>");
-      b.append("<b>" + Utilities.escapeXml(ex.getLabel()) + "</b>:" + encodeValue(ex.getValue()) + "\r\n");
+      b.append("<b>" + Utilities.escapeXml(ex.getLabel()) + "</b>:" + encodeValue(ex.getValue(), null) + "\r\n");
     }
     return b.toString();
 
   }
 
-  private XhtmlNode encodeValue(DataType value, String name, Base parent, DataType compare, int mode) throws FHIRException, IOException {
-    String oldValue = encodeValue(compare);
-    String newValue = encodeValue(value);
-    return compareString(newValue, value, null, name, parent, oldValue, null, mode);
+  private XhtmlNode encodeValue(DataType value, String name, Base parent, DataType compare, int mode, String elementName) throws FHIRException, IOException {
+    String oldValue = encodeValue(compare, elementName);
+    String newValue = encodeValue(value, elementName);
+    return compareString(newValue, value, null, name, parent, oldValue, null, mode, false, false, true);
   }
 
-  private String encodeValue(DataType value) throws FHIRException, IOException {
-    if (value == null || value.isEmpty())
+  private String encodeValue(DataType value, String elementName) throws FHIRException, IOException {
+    if (value == null || value.isEmpty()) {
       return null;
-    if (value instanceof PrimitiveType)
-      return Utilities.escapeXml(((PrimitiveType) value).asStringValue());
+    }
+    if (value instanceof PrimitiveType<?> && (context.getFixedFormat().notPrimitives() || elementName == null)) {
+      return ((PrimitiveType<?>) value).asStringValue();
+    }
 
     ByteArrayOutputStream bs = new ByteArrayOutputStream();
-    XmlParser parser = new XmlParser();
-    parser.setOutputStyle(OutputStyle.PRETTY);
-    parser.compose(bs, null, value);
+    if (context.getFixedFormat().isXml()) {
+      XmlParser parser = new XmlParser();
+      parser.setOutputStyle(OutputStyle.PRETTY);
+      parser.compose(bs, value, null);
+    } else if (value instanceof PrimitiveType<?>) {
+      if (value instanceof BooleanType || value instanceof IntegerType || value instanceof DecimalType) {
+        TextFile.stringToStream(((PrimitiveType<?>) value).asStringValue(), bs);
+      } else {
+        TextFile.stringToStream("\""+Utilities.escapeJson(((PrimitiveType<?>) value).asStringValue())+"\"", bs);        
+      }
+    } else {
+      JsonParser parser = new JsonParser();
+      parser.setOutputStyle(OutputStyle.PRETTY);
+      parser.compose(bs, value, null);
+    }
     String[] lines = bs.toString().split("\\r?\\n");
     StringBuilder b = new StringBuilder();
     for (String s : lines) {
-      if (!Utilities.noString(s) && !s.startsWith("<?")) { // eliminate the xml header
-        b.append(Utilities.escapeXml(s).replace(" ", "&nbsp;") + "<br/>");
+      if (!Utilities.noString(s) && !s.startsWith("<?")) { // eliminate the xml header if it's xml
+        b.append(s.replace(" xmlns=\"http://hl7.org/fhir\"", ""));
+        b.append("\n");
       }
     }
-    return b.toString();
-
+    boolean prefixWithName = context.getFixedFormat() == FixedValueFormat.JSON_ALL && elementName != null;
+    if (elementName != null && elementName.contains("[x]")) {
+      elementName = elementName.replace("[x]", Utilities.capitalize(value.fhirType())); 
+    }
+    return (prefixWithName ? "\""+Utilities.escapeXml(elementName)+"\" : " : "")+ b.toString().trim();
   }
 
   private XhtmlNode getMapping(StructureDefinition profile, ElementDefinition d, String uri, ElementDefinition compare, int mode) {
@@ -4466,7 +4560,7 @@ public class StructureDefinitionRenderer extends ResourceRenderer {
       }
     }
 
-    return compareString(Utilities.escapeXml(newMap), null, null, "mapping", d, Utilities.escapeXml(oldMap), null, mode);
+    return compareString(Utilities.escapeXml(newMap), null, null, "mapping", d, Utilities.escapeXml(oldMap), null, mode, false, false);
   }
 
   private XhtmlNode compareSimpleTypeLists(List<? extends PrimitiveType> original, List<? extends PrimitiveType> compare, int mode) throws IOException {

@@ -282,7 +282,7 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
       if (i.hasExtension(ToolingExtensions.EXT_Q_DISPLAY_CAT)) {
         CodeableConcept cc = i.getExtensionByUrl(ToolingExtensions.EXT_Q_DISPLAY_CAT).getValueCodeableConcept();
         String code = cc.getCode("http://hl7.org/fhir/questionnaire-display-category");
-        flags.addPiece(gen.new Piece(getSDCLink("StructureDefinition-sdc-questionnaire-displayCategory.html"), null, "Category: "+code).addHtml(new XhtmlNode(NodeType.Element, "img").attribute("alt", "icon").attribute("src", getImgPath("icon-qi-" + code + ".png"))));
+        flags.addPiece(gen.new Piece("https://hl7.org/fhir/R4/extension-questionnaire-displayCategory.html", null, "Category: "+code).addHtml(new XhtmlNode(NodeType.Element, "img").attribute("alt", "icon").attribute("src", getImgPath("icon-qi-" + code + ".png"))));
       }
     }    
     Cell defn = gen.new Cell();
@@ -324,7 +324,7 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
           defn.getPieces().add(gen.new Piece(vs.getWebPath(), vs.present(), null));                              
         }
       } else {
-        ValueSet vs = context.getWorker().fetchResource(ValueSet.class, i.getAnswerValueSet(), q);
+        ValueSet vs = context.getWorker().findTxResource(ValueSet.class, i.getAnswerValueSet(), q);
         if (vs == null  || !vs.hasWebPath()) {
           defn.getPieces().add(gen.new Piece(null, i.getAnswerValueSet(), null));                    
         } else {
@@ -350,8 +350,14 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
         defn.getPieces().add(gen.new Piece(null, " = ", null));
         if (v.getValue().isPrimitive()) {
           defn.getPieces().add(gen.new Piece(null, v.getValue().primitiveValue(), null));
-        } else {
+        } else if (v.hasValueCoding()) {
           renderCoding(gen, defn.getPieces(), v.getValueCoding());          
+        } else if (v.hasValueQuantity()) {
+          renderQuantity(gen, defn.getPieces(), v.getValueQuantity(), false);        
+        } else if (v.hasValueReference()) {
+          renderReference(q, gen, defn.getPieces(), v.getValueReference(), true);       
+        } else if (v.hasValueAttachment()) {
+          // renderAttachment(gen, defn.getPieces(), v.getValueAttachment());          
         }
       }
     }
@@ -507,7 +513,7 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
           defn.getPieces().add(gen.new Piece(vs.getWebPath(), vs.present(), null));                              
         }
       } else {
-        ValueSet vs = context.getWorker().fetchResource(ValueSet.class, i.getAnswerValueSet(), q);
+        ValueSet vs = context.getWorker().findTxResource(ValueSet.class, i.getAnswerValueSet(), q);
         if (vs == null  || !vs.hasWebPath()) {
           defn.getPieces().add(gen.new Piece(null, i.getAnswerValueSet(), null));                    
         } else {
@@ -528,8 +534,14 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
         defn.getPieces().add(gen.new Piece(null, " = ", null));
         if (v.getValue().isPrimitive()) {
           defn.getPieces().add(gen.new Piece(null, v.getValue().primitiveValue(), null));
-        } else {
+        } else if (v.hasValueCoding()) {
           renderCoding(gen, defn.getPieces(), v.getValueCoding());          
+        } else if (v.hasValueQuantity()) {
+          renderQuantity(gen, defn.getPieces(), v.getValueQuantity(), false);          
+        } else if (v.hasValueReference()) {
+          renderReference(q, gen, defn.getPieces(), v.getValueReference(), false);          
+//        } else if (v.hasValueAttachment()) {
+//          renderAttachment(gen, defn.getPieces(), v.getValueAttachment());          
         }
       }
     }
@@ -719,7 +731,7 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
       CodeableConcept cc = i.getExtensionByUrl(ToolingExtensions.EXT_Q_DISPLAY_CAT).getValueCodeableConcept();
       String code = cc.getCode("http://hl7.org/fhir/questionnaire-display-category");
       hasFlag = true;
-      flags.ah(getSDCLink("http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-displayCategory"), "Category: "+code).img(getImgPath("icon-qi-" + code + ".png"), "icon");
+      flags.ah("https://hl7.org/fhir/R4/extension-questionnaire-displayCategory.html", "Category: "+code).img(getImgPath("icon-qi-" + code + ".png"), "icon");
     }
 
     if (i.hasMaxLength()) {
@@ -741,7 +753,7 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
           ans.ah(vs.getWebPath()).tx(vs.present());                              
         }
       } else {
-        ValueSet vs = context.getWorker().fetchResource(ValueSet.class, i.getAnswerValueSet(), q);
+        ValueSet vs = context.getWorker().findTxResource(ValueSet.class, i.getAnswerValueSet(), q);
         if (vs == null  || !vs.hasWebPath()) {
           ans.tx(i.getAnswerValueSet());                    
         } else {
@@ -759,8 +771,14 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
         if (first) first = false; else vi.tx(", ");
         if (v.getValue().isPrimitive()) {
           vi.tx(v.getValue().primitiveValue());
-        } else {
+        } else if (v.hasValueCoding()) {
           renderCoding(vi, v.getValueCoding(), true);           
+        } else if (v.hasValueReference()) {
+          renderReference(vi, v.getValueReference());           
+        } else if (v.hasValueQuantity()) {
+          renderQuantity(vi, v.getValueQuantity());           
+//        } else if (v.hasValueAttachment()) {
+//          renderAttachment(vi, v.getValueAttachment());           
         }
       }
     }
@@ -836,7 +854,7 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
           vs.setUrl(q.getUrl()+"--"+q.getContained(i.getAnswerValueSet().substring(1)));
         }
       } else {
-        vs = context.getContext().fetchResource(ValueSet.class, i.getAnswerValueSet(), q);
+        vs = context.getContext().findTxResource(ValueSet.class, i.getAnswerValueSet(), q);
       }
       if (vs != null) {
         ValueSetExpansionOutcome exp = context.getContext().expandVS(vs, true, false);
@@ -957,7 +975,7 @@ public class QuestionnaireRenderer extends TerminologyRenderer {
     // content control
     defn(tbl, "Max Length", qi.getMaxLength());
     if (qi.hasAnswerValueSet()) {
-      defn(tbl, "Value Set", qi.getDefinition(), context.getWorker().fetchResource(ValueSet.class,  qi.getAnswerValueSet(), q));
+      defn(tbl, "Value Set", qi.getDefinition(), context.getWorker().findTxResource(ValueSet.class,  qi.getAnswerValueSet(), q));
     }
     if (qi.hasAnswerOption()) {
       XhtmlNode tr = tbl.tr();

@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 import org.hl7.fhir.exceptions.FHIRException;
+import org.hl7.fhir.r5.model.CanonicalType;
 import org.hl7.fhir.r5.model.CodeType;
 import org.hl7.fhir.r5.model.Enumeration;
+import org.hl7.fhir.r5.model.Enumerations.FHIRTypes;
 import org.hl7.fhir.r5.model.Enumerations.VersionIndependentResourceTypesAll;
 import org.hl7.fhir.r5.model.Extension;
 import org.hl7.fhir.r5.model.OperationDefinition;
@@ -21,6 +23,7 @@ import org.hl7.fhir.r5.utils.ToolingExtensions;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
 import org.hl7.fhir.utilities.StandardsStatus;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.VersionUtilities;
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
 
 public class OperationDefinitionRenderer extends TerminologyRenderer {
@@ -122,9 +125,10 @@ public class OperationDefinitionRenderer extends TerminologyRenderer {
     }
     tr.td().addText(Integer.toString(p.getMin())+".."+p.getMax());
     td = tr.td();
-    StructureDefinition sd = p.getType() != null ? context.getWorker().fetchTypeDefinition(p.getType().toCode()) : null;
+    String actualType = translateTypeToVersion(p.getTypeElement());
+    StructureDefinition sd = actualType != null ? context.getWorker().fetchTypeDefinition(actualType) : null;
     if (sd == null)
-      td.tx(p.hasType() ? p.getType().toCode() : "");
+      td.tx(p.hasType() ? actualType : "");
     else if (sd.getAbstract() && p.hasExtension(ToolingExtensions.EXT_ALLOWED_TYPE)) {
       boolean first = true;
       for (Extension ex : p.getExtensionsByUrl(ToolingExtensions.EXT_ALLOWED_TYPE)) {
@@ -132,12 +136,26 @@ public class OperationDefinitionRenderer extends TerminologyRenderer {
         String s = ex.getValue().primitiveValue();
         StructureDefinition sdt = context.getWorker().fetchTypeDefinition(s);
         if (sdt == null)
-          td.tx(p.hasType() ? p.getType().toCode() : "");
+          td.tx(p.hasType() ? actualType : "");
         else
           td.ah(sdt.getWebPath()).tx(s);         
       }
     } else
-      td.ah(sd.getWebPath()).tx(p.hasType() ? p.getType().toCode() : "");
+      td.ah(sd.getWebPath()).tx(actualType);
+    if (p.hasTargetProfile()) {
+      td.tx(" (");
+      boolean first = true;
+      for (CanonicalType tp : p.getTargetProfile()) {
+        if (first) { first = false;} else {td.tx(", ");};
+        StructureDefinition sdt = context.getWorker().fetchTypeDefinition(tp.asStringValue());
+        if (sdt == null || !sdt.hasWebPath()) {
+          td.code().tx(tp.asStringValue());
+        } else {
+          td.ah(sdt.getWebPath(), tp.asStringValue()).tx(sdt.present());
+        }
+      }
+      td.tx(")");
+    }
     if (p.hasSearchType()) {
       td.br();
       td.tx("(");
@@ -154,6 +172,16 @@ public class OperationDefinitionRenderer extends TerminologyRenderer {
       for (OperationDefinitionParameterComponent pp : p.getPart()) {
         genOpParam(tbl, path+p.getName()+".", pp, opd);
       }
+    }
+  }
+  
+  public static final String EXT_OPDEF_ORIGINAL_TYPE = "http://hl7.org/fhir/4.0/StructureDefinition/extension-OperationDefinition.parameter.type";
+
+  private String translateTypeToVersion(Enumeration<FHIRTypes> src) {
+    if (src.hasExtension(EXT_OPDEF_ORIGINAL_TYPE)) {
+      return src.getExtensionString(EXT_OPDEF_ORIGINAL_TYPE);
+    } else {
+      return src.asStringValue();
     }
   }
 

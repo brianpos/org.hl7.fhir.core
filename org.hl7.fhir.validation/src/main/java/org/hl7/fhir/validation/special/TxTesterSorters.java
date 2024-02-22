@@ -1,7 +1,9 @@
 package org.hl7.fhir.validation.special;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 import org.hl7.fhir.ParametersParameter;
 import org.hl7.fhir.r5.model.Base;
@@ -10,12 +12,14 @@ import org.hl7.fhir.r5.model.OperationOutcome;
 import org.hl7.fhir.r5.model.OperationOutcome.OperationOutcomeIssueComponent;
 import org.hl7.fhir.r5.model.Parameters;
 import org.hl7.fhir.r5.model.Parameters.ParametersParameterComponent;
+import org.hl7.fhir.r5.model.StringType;
 import org.hl7.fhir.r5.model.ValueSet;
 import org.hl7.fhir.r5.model.ValueSet.ConceptPropertyComponent;
 import org.hl7.fhir.r5.model.ValueSet.ConceptReferenceDesignationComponent;
 import org.hl7.fhir.r5.model.ValueSet.ValueSetExpansionContainsComponent;
 import org.hl7.fhir.r5.model.ValueSet.ValueSetExpansionParameterComponent;
 import org.hl7.fhir.r5.model.ValueSet.ValueSetExpansionPropertyComponent;
+import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
 
 public class TxTesterSorters {
 
@@ -26,6 +30,17 @@ public class TxTesterSorters {
     for (ParametersParameterComponent p : po.getParameter()) {
       if (p.getResource() != null && p.getResource() instanceof OperationOutcome) {
         Collections.sort(((OperationOutcome) p.getResource()).getIssue(), new TxTesterSorters.OperationIssueSorter());
+      }
+      if ("message".equals(p.getName()) && p.hasValuePrimitive()) {
+        String pv = p.getValue().primitiveValue();
+        if (pv.contains("; ")) {
+          List<String> bits = new ArrayList<>();
+          for (String s : pv.split("\\; ")) {
+            bits.add(s);
+          }
+          Collections.sort(bits);
+          p.setValue(new StringType(CommaSeparatedStringBuilder.join("; ", bits)));
+        }
       }
     }
   }
@@ -70,8 +85,8 @@ public class TxTesterSorters {
         s2 = o2.hasCode() ? o2.getCode().toCode() : "";
         ret = s1.compareTo(s2);
         if (ret == 0) {
-          s1 = o1.hasLocation() ? o1.getLocation().get(0).primitiveValue() : "";
-          s2 = o2.hasLocation() ? o2.getLocation().get(0).primitiveValue() : "";
+          s1 = o1.hasExpressionOrLocation() ? o1.getExpressionOrLocation().get(0).primitiveValue() : "";
+          s2 = o2.hasExpressionOrLocation() ? o2.getExpressionOrLocation().get(0).primitiveValue() : "";
           ret = s1.compareTo(s2);
           if (ret == 0) {
             s1 = o1.getDetails().hasText() ? o1.getDetails().getText() : "";
@@ -101,14 +116,24 @@ public class TxTesterSorters {
 
     @Override
     public int compare(ValueSetExpansionPropertyComponent o1, ValueSetExpansionPropertyComponent o2) {
-      int i = o1.getUri().compareTo(o2.getUri());
+      int i;
+      if (o1.getUri() == null || o2.getUri() == null) {
+        if (o1.getUri() == null && o2.getUri() == null) {
+          i = 0;
+        } else if (o1.getUri() == null) {
+          i = -1;
+        } else {
+          i = 1;
+        }
+      } else {
+        i = o1.getUri().compareTo(o2.getUri());
+      }
       if (i == 0) {
         return o1.getCode().compareTo(o2.getCode());
       } else {
         return i;
       }
     }
-
   }
 
   public static class ExtensionSorter implements Comparator<Extension> {
