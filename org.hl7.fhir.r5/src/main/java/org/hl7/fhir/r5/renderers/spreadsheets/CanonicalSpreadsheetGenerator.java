@@ -13,7 +13,9 @@ import org.hl7.fhir.r5.model.Identifier;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionMappingComponent;
 import org.hl7.fhir.r5.renderers.DataRenderer;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 
+@MarkedToMoveToAdjunctPackage
 public class CanonicalSpreadsheetGenerator extends SpreadsheetGenerator {
 
   public CanonicalSpreadsheetGenerator(IWorkerContext context) {
@@ -32,7 +34,7 @@ public class CanonicalSpreadsheetGenerator extends SpreadsheetGenerator {
     }
     addMetadataRow(sheet, "URL", cr.getUrl());
     for (Identifier id : cr.getIdentifier()) {
-      addMetadataRow(sheet, "Identifier", dr.display(id));
+      addMetadataRow(sheet, "Identifier", dr.displayDataType(id));
     }
     addMetadataRow(sheet, "Version", cr.getVersion());
     addMetadataRow(sheet, "Name", cr.getName());
@@ -42,10 +44,10 @@ public class CanonicalSpreadsheetGenerator extends SpreadsheetGenerator {
     addMetadataRow(sheet, "Date", cr.getDateElement().asStringValue());
     addMetadataRow(sheet, "Publisher", cr.getPublisher());
     for (ContactDetail c : cr.getContact()) {
-      addMetadataRow(sheet, "Contact", dr.display(c));
+      addMetadataRow(sheet, "Contact", dr.displayDataType(c));
     }
     for (CodeableConcept j : cr.getJurisdiction()) {
-      addMetadataRow(sheet, "Jurisdiction", dr.display(j));
+      addMetadataRow(sheet, "Jurisdiction", dr.displayDataType(j));
     }
 
     addMetadataRow(sheet, "Description", cr.getDescription());

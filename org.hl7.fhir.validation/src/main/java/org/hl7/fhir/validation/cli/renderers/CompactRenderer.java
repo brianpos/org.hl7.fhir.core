@@ -10,7 +10,9 @@ import java.util.List;
 
 import org.hl7.fhir.r5.model.OperationOutcome;
 import org.hl7.fhir.r5.utils.ToolingExtensions;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 
 public class CompactRenderer extends ValidationOutputRenderer {
 
@@ -25,13 +27,13 @@ public class CompactRenderer extends ValidationOutputRenderer {
   @Override
   public void render(OperationOutcome op) throws IOException {
     if (split) {
-      File file = new File(Utilities.path(dir.getAbsolutePath(), Utilities.changeFileExt(tail(ToolingExtensions.readStringExtension(op, ToolingExtensions.EXT_OO_FILE)), ".txt")));
+      File file = ManagedFileAccess.file(Utilities.path(dir.getAbsolutePath(), FileUtilities.changeFileExt(tail(ToolingExtensions.readStringExtension(op, ToolingExtensions.EXT_OO_FILE)), ".txt")));
       if (op.isSuccess()) {
         if (file.exists()) {
           file.delete();
         }
       } else {
-        PrintStream dstF = new PrintStream(new FileOutputStream(file));
+        PrintStream dstF = new PrintStream(ManagedFileAccess.outStream(file));
         render(dstF, op);
         dstF.close();
       }
@@ -40,9 +42,9 @@ public class CompactRenderer extends ValidationOutputRenderer {
     }
   }
 
-  private void render(PrintStream d, OperationOutcome op) {
+  private void render(PrintStream d, OperationOutcome op) throws IOException {
     if (split) {
-      d.println(new File(ToolingExtensions.readStringExtension(op, ToolingExtensions.EXT_OO_FILE)).getName()+" "+getRunDate()+":");      
+      d.println(ManagedFileAccess.file(ToolingExtensions.readStringExtension(op, ToolingExtensions.EXT_OO_FILE)).getName()+" "+getRunDate()+":");      
     } else {
       d.println();
       d.println("----------------------------------------------------------------------------------");
@@ -53,7 +55,9 @@ public class CompactRenderer extends ValidationOutputRenderer {
       String path = issue.hasExpression() ? issue.getExpression().get(0).asStringValue() : "n/a";
       int line = ToolingExtensions.readIntegerExtension(issue, ToolingExtensions.EXT_ISSUE_LINE, -1);
       int col = ToolingExtensions.readIntegerExtension(issue, ToolingExtensions.EXT_ISSUE_COL, -1);      
-      lines.add(Utilities.padLeft(Integer.toString(line), '0', 8) + ":" + Utilities.padLeft(Integer.toString(col), '0', 8)+":"+path+"|["+Integer.toString(line) + ", " + Integer.toString(col)+"] "+path+": "+issue.getSeverity().getDisplay()+" - "+issue.getDetails().getText());
+      lines.add(Utilities.padLeft(Integer.toString(line), '0', 8) + ":" + Utilities.padLeft(Integer.toString(col), '0', 8)+":"+
+      path+"|["+Integer.toString(line) + ", " + Integer.toString(col)+"] "+path+": "+issue.getSeverity().getDisplay()+" - "+issue.getDetails().getText()+
+      renderMessageId(issue));
     }
     Collections.sort(lines);
     for (String s : lines) {

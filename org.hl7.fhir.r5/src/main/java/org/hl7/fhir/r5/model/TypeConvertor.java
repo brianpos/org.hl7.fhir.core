@@ -127,6 +127,19 @@ public class TypeConvertor {
     else
       throw new FHIRException("Unable to convert a "+b.fhirType()+"("+b.getClass().getName()+") to a Uri");
   }
+
+  public static UuidType castToUuid(Base b) throws FHIRException {
+    if (b == null) {
+      return null;
+    }
+
+    if (b instanceof UuidType)
+      return (UuidType) b;
+    else if (b.hasPrimitiveValue())
+      return new UuidType(b.primitiveValue());
+    else
+      throw new FHIRException("Unable to convert a "+b.fhirType()+"("+b.getClass().getName()+") to a Uuid");
+  }
   
   public static CanonicalType castToCanonical(Base b) throws FHIRException {
     if (b == null) {
@@ -161,7 +174,7 @@ public class TypeConvertor {
 
     if (b instanceof DateTimeType)
       return (DateTimeType) b;
-    else if (b.fhirType().equals("dateTime"))
+    else if (Utilities.existsInList(b.fhirType(), "dateTime", "date", "instant"))
       return new DateTimeType(b.primitiveValue());
     else
       throw new FHIRException("Unable to convert a "+b.fhirType()+"("+b.getClass().getName()+") to a DateTime");

@@ -4,27 +4,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
 
 import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRFormatError;
 import org.hl7.fhir.r5.conformance.profile.BindingResolution;
 import org.hl7.fhir.r5.conformance.profile.ProfileKnowledgeProvider;
-import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
-import org.hl7.fhir.r5.model.ElementDefinition.ElementDefinitionBindingAdditionalComponent;
-import org.hl7.fhir.r5.model.ElementDefinition.ElementDefinitionBindingComponent;
 import org.hl7.fhir.r5.model.Coding;
 import org.hl7.fhir.r5.model.ElementDefinition;
+import org.hl7.fhir.r5.model.ElementDefinition.ElementDefinitionBindingAdditionalComponent;
 import org.hl7.fhir.r5.model.Extension;
-import org.hl7.fhir.r5.model.PrimitiveType;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.model.UsageContext;
 import org.hl7.fhir.r5.model.ValueSet;
 import org.hl7.fhir.r5.renderers.CodeResolver.CodeResolution;
+import org.hl7.fhir.r5.renderers.Renderer.RenderingStatus;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext;
-import org.hl7.fhir.r5.utils.PublicationHacker;
-import org.hl7.fhir.r5.utils.ToolingExtensions;
-import org.hl7.fhir.utilities.MarkDownProcessor;
+import org.hl7.fhir.r5.utils.UserDataNames;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
 import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator;
@@ -35,18 +31,19 @@ import org.hl7.fhir.utilities.xhtml.XhtmlComposer;
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
 import org.hl7.fhir.utilities.xhtml.XhtmlNodeList;
 
+@MarkedToMoveToAdjunctPackage
 public class AdditionalBindingsRenderer {
   public class AdditionalBindingDetail {
     private String purpose;
     private String valueSet;
     private String doco;
     private String docoShort;
-    private UsageContext usage;
+    private List<UsageContext> usages = new ArrayList<UsageContext>();
     private boolean any = false;
     private boolean isUnchanged = false;
     private boolean matched = false;
     private boolean removed = false;
-    private ValueSet vs;
+//    private ValueSet vs;
     
     private AdditionalBindingDetail compare;
     private int count = 1;
@@ -77,7 +74,7 @@ public class AdditionalBindingsRenderer {
       isUnchanged = isUnchanged && ((valueSet==null && compare.valueSet==null) || valueSet.equals(compare.valueSet));
       isUnchanged = isUnchanged && ((doco==null && compare.doco==null) || doco.equals(compare.doco));
       isUnchanged = isUnchanged && ((docoShort==null && compare.docoShort==null) || docoShort.equals(compare.docoShort));
-      isUnchanged = isUnchanged && ((usage==null && compare.usage==null) || usage.equals(compare.usage));
+      isUnchanged = isUnchanged && ((usages==null && compare.usages==null) || usages.equals(compare.usages));
       return isUnchanged;
     }
   }
@@ -122,7 +119,7 @@ public class AdditionalBindingsRenderer {
       abr.compare = new AdditionalBindingDetail();
       abr.compare.valueSet = compExt==null ? null : compExt.getValue().primitiveValue();
     } else {
-      abr.isUnchanged = ext.hasUserData(ProfileUtilities.UD_DERIVATION_EQUALS);
+      abr.isUnchanged = ext.hasUserData(UserDataNames.SNAPSHOT_DERIVATION_EQUALS);
     }
     bindings.add(abr);
   }
@@ -179,10 +176,14 @@ public class AdditionalBindingsRenderer {
     abr.purpose =  ext.getExtensionString("purpose");
     abr.valueSet =  ext.getExtensionString("valueSet");
     abr.doco =  ext.getExtensionString("documentation");
-      abr.docoShort =  ext.getExtensionString("shortDoco");
-    abr.usage =  (ext.hasExtension("usage")) && ext.getExtensionByUrl("usage").hasValueUsageContext() ? ext.getExtensionByUrl("usage").getValueUsageContext() : null;
+    abr.docoShort =  ext.getExtensionString("shortDoco");
+    for (Extension x : ext.getExtensionsByUrl("usage")) {
+      if (x.hasValueUsageContext()) {
+        abr.usages.add(x.getValueUsageContext());
+      }
+    }
     abr.any = "any".equals(ext.getExtensionString("scope"));
-    abr.isUnchanged = ext.hasUserData(ProfileUtilities.UD_DERIVATION_EQUALS);
+    abr.isUnchanged = ext.hasUserData(UserDataNames.SNAPSHOT_DERIVATION_EQUALS);
     return abr;
   }
 
@@ -192,9 +193,9 @@ public class AdditionalBindingsRenderer {
     abr.valueSet =  ab.getValueSet();
     abr.doco =  ab.getDocumentation();
     abr.docoShort =  ab.getShortDoco();
-    abr.usage = ab.hasUsage() ? ab.getUsageFirstRep() : null;
+    abr.usages.addAll(ab.getUsage());
     abr.any = ab.getAny();
-    abr.isUnchanged = ab.hasUserData(ProfileUtilities.UD_DERIVATION_EQUALS);
+    abr.isUnchanged = ab.hasUserData(UserDataNames.SNAPSHOT_DERIVATION_EQUALS);
     return abr;
   }
 
@@ -225,22 +226,22 @@ public class AdditionalBindingsRenderer {
     boolean any = false;
     for (AdditionalBindingDetail binding : bindings) {
       doco = doco || binding.getDoco(fullDoco)!=null  || (binding.compare!=null && binding.compare.getDoco(fullDoco)!=null);
-      usage = usage || binding.usage != null || (binding.compare!=null && binding.compare.usage!=null);
+      usage = usage || !binding.usages.isEmpty() || (binding.compare!=null && !binding.compare.usages.isEmpty());
       any = any || binding.any || (binding.compare!=null && binding.compare.any);
     }
 
     XhtmlNode tr = new XhtmlNode(NodeType.Element, "tr");
     children.add(tr);
-    tr.td().style("font-size: 11px").b().tx("Additional Bindings");
-    tr.td().style("font-size: 11px").tx("Purpose");
+    tr.td().style("font-size: 11px").b().tx(context.formatPhrase(RenderingContext.ADD_BIND_ADD_BIND));
+    tr.td().style("font-size: 11px").tx(context.formatPhrase(RenderingContext.GENERAL_PURPOSE));
     if (usage) {
-      tr.td().style("font-size: 11px").tx("Usage");
+      tr.td().style("font-size: 11px").tx(context.formatPhrase(RenderingContext.GENERAL_USAGE));
     }
     if (any) {
-      tr.td().style("font-size: 11px").tx("Any");
+      tr.td().style("font-size: 11px").tx(context.formatPhrase(RenderingContext.ADD_BIND_ANY));
     }
     if (doco) {
-      tr.td().style("font-size: 11px").tx("Documentation");
+      tr.td().style("font-size: 11px").tx(context.formatPhrase(RenderingContext.GENERAL_DOCUMENTATION));
     }
     for (AdditionalBindingDetail binding : bindings) {
       tr =  new XhtmlNode(NodeType.Element, "tr");
@@ -259,7 +260,7 @@ public class AdditionalBindingsRenderer {
       if (binding.compare!=null && binding.valueSet.equals(binding.compare.valueSet))
         valueset.style(STYLE_UNCHANGED);
       if (br.url != null) {
-        XhtmlNode a = valueset.ah(determineUrl(br.url), br.uri);
+        XhtmlNode a = valueset.ah(context.prefixLocalHref(determineUrl(br.url)), br.uri);
         a.tx(br.display);
         if (br.external) {
           a.tx(" ");
@@ -272,7 +273,7 @@ public class AdditionalBindingsRenderer {
         valueset.br();
         valueset = valueset.span(STYLE_REMOVED, null);
         if (compBr.url != null) {
-          valueset.ah(determineUrl(compBr.url), binding.compare.valueSet).tx(compBr.display);
+          valueset.ah(context.prefixLocalHref(determineUrl(compBr.url)), binding.compare.valueSet).tx(compBr.display);
         } else {
           valueset.span(null, binding.compare.valueSet).tx(compBr.display);
         }
@@ -288,16 +289,19 @@ public class AdditionalBindingsRenderer {
         renderPurpose(purpose, binding.compare.purpose);
       }
       if (usage) {
-        if (binding.usage != null) {
-          // TODO: This isn't rendered at all yet.  Ideally, we want it to render with comparison...
-          new DataRenderer(context).render(tr.td(), binding.usage);
+        if (!binding.usages.isEmpty()) {
+          XhtmlNode td = tr.td();
+          for (UsageContext uc : binding.usages) {
+            td.sep(", ");
+            new DataRenderer(context).renderBase(new RenderingStatus(), td, uc);
+          }
         } else {
           tr.td();          
         }
       }
       if (any) {
-        String newRepeat = binding.any ? "Any repeats" : "All repeats";
-        String oldRepeat = binding.compare!=null && binding.compare.any ? "Any repeats" : "All repeats";
+        String newRepeat = binding.any ? context.formatPhrase(RenderingContext.ADD_BIND_ANY_REP) : context.formatPhrase(RenderingContext.ADD_BIND_ALL_REP);
+        String oldRepeat = binding.compare!=null && binding.compare.any ? context.formatPhrase(RenderingContext.ADD_BIND_ANY_REP) : context.formatPhrase(RenderingContext.ADD_BIND_ALL_REP);
         compareString(tr.td().style("font-size: 11px"), newRepeat, oldRepeat);
       }
       if (doco) {
@@ -338,54 +342,50 @@ public class AdditionalBindingsRenderer {
     boolean r5 = context == null || context.getWorker() == null ? false : VersionUtilities.isR5Plus(context.getWorker().getVersion());
     switch (purpose) {
     case "maximum": 
-      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-maximum" : corePath+"extension-elementdefinition-maxvalueset.html", "A required binding, for use when the binding strength is 'extensible' or 'preferred'").tx("Max Binding");
+      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-maximum" : corePath+"extension-elementdefinition-maxvalueset.html", context.formatPhrase(RenderingContext.ADD_BIND_EXT_PREF)).tx(context.formatPhrase(RenderingContext.ADD_BIND_MAX));
       break;
     case "minimum": 
-      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-minimum" : corePath+"extension-elementdefinition-minvalueset.html", "The minimum allowable value set - any conformant system SHALL support all these codes").tx("Min Binding");
+      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-minimum" : corePath+"extension-elementdefinition-minvalueset.html", context.formatPhrase(RenderingContext.GENERAL_BIND_MIN_ALLOW)).tx(context.formatPhrase(RenderingContext.ADD_BIND_MIN));
       break;
     case "required" :
-      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-required" : corePath+"terminologies.html#strength", "Validators will check this binding (strength = required)").tx("Required Binding");
+      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-required" : corePath+"terminologies.html#strength", context.formatPhrase(RenderingContext.ADD_BIND_VALID_REQ)).tx(context.formatPhrase(RenderingContext.ADD_BIND_REQ_BIND));
       break;
     case "extensible" :
-      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-extensible" : corePath+"terminologies.html#strength", "Validators will check this binding (strength = extensible)").tx("Extensible Binding");
+      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-extensible" : corePath+"terminologies.html#strength", context.formatPhrase(RenderingContext.ADD_BIND_VALID_EXT)).tx(context.formatPhrase(RenderingContext.ADD_BIND_EX_BIND));
+      break;
+    case "preferred" :
+      td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-preferred" : corePath+"terminologies.html#strength", context.formatPhrase(RenderingContext.ADD_BIND_RECOM_VALUE_SET)).tx(context.formatPhrase(RenderingContext.ADD_BIND_PREF_BIND));
       break;
     case "current" :
       if (r5) {
-        td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-current" : corePath+"terminologies.html#strength", "New records are required to use this value set, but legacy records may use other codes").tx("Current Binding");
+        td.ah(corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-current", context.formatPhrase(RenderingContext.ADD_BIND_NEW_REC)).tx(context.formatPhrase(RenderingContext.ADD_BIND_CURR_BIND));
       } else {
-        td.span(null, "New records are required to use this value set, but legacy records may use other codes").tx("Required");
-      }
-      break;
-    case "preferred" :
-      if (r5) {
-        td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-preferred" : corePath+"terminologies.html#strength", "This is the value set that is recommended (documentation should explain why)").tx("Preferred Binding");
-      } else {
-        td.span(null, "This is the value set that is recommended (documentation should explain why)").tx("Recommended");
+        td.span(null, context.formatPhrase(RenderingContext.ADD_BIND_NEW_REC)).tx(context.formatPhrase(RenderingContext.ADD_BIND_CURR_BIND));
       }
       break;
     case "ui" :
       if (r5) {
-        td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-ui" : corePath+"terminologies.html#strength", "This value set is provided to user look up in a given context").tx("UI Binding");
+        td.ah(corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-ui", context.formatPhrase(RenderingContext.ADD_BIND_GIVEN_CONT)).tx(context.formatPhrase(RenderingContext.ADD_BIND_UI_BIND));
       } else {
-        td.span(null, "This value set is provided to user look up in a given context").tx("UI");        
+        td.span(null, context.formatPhrase(RenderingContext.ADD_BIND_GIVEN_CONT)).tx(context.formatPhrase(RenderingContext.ADD_BIND_UI));        
       }
       break;
     case "starter" :
       if (r5) {
-        td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-starter" : corePath+"terminologies.html#strength", "This value set is a good set of codes to start with when designing your system").tx("Starter Set");
+        td.ah(corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-starter",  context.formatPhrase(RenderingContext.ADD_BIND_DESIG_SYS)).tx(context.formatPhrase(RenderingContext.GENERAL_STARTER));
       } else {
-        td.span(null, "This value set is a good set of codes to start with when designing your system").tx("Starter");        
+        td.span(null, context.formatPhrase(RenderingContext.ADD_BIND_DESIG_SYS)).tx(context.formatPhrase(RenderingContext.GENERAL_STARTER));        
       }
       break;
     case "component" :
       if (r5) {
-        td.ah(r5 ? corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-component" : corePath+"terminologies.html#strength", "This value set is a component of the base value set").tx("Component");
+        td.ah(corePath+"valueset-additional-binding-purpose.html#additional-binding-purpose-component", context.formatPhrase(RenderingContext.ADD_BIND_VALUE_COMP)).tx(context.formatPhrase(RenderingContext.GENERAL_COMPONENT));
       } else {
-        td.span(null, "This value set is a component of the base value set").tx("Component");        
+        td.span(null, context.formatPhrase(RenderingContext.ADD_BIND_VALUE_COMP)).tx(context.formatPhrase(RenderingContext.GENERAL_COMPONENT));        
       }
       break;
     default:  
-      td.span(null, "Unknown code for purpose").tx(purpose);
+      td.span(null, context.formatPhrase(RenderingContext.ADD_BIND_UNKNOWN_PUR)).tx(purpose);
     }
   }
 
@@ -430,7 +430,7 @@ public class AdditionalBindingsRenderer {
       children.tx(" (");
       boolean ffirst = !b.getAny();
       if (b.getAny()) {
-        children.tx("any repeat");
+        children.tx(context.formatPhrase(RenderingContext.ADD_BIND_ANY_REP));
       }
       for (UsageContext uc : b.getUsage()) {
         if (ffirst) ffirst = false; else children.tx(",");
@@ -439,7 +439,7 @@ public class AdditionalBindingsRenderer {
           children.tx("=");
         }
         CodeResolution ccr = cr.resolveCode(uc.getValueCodeableConcept());
-        children.ah(ccr.getLink(), ccr.getHint()).tx(ccr.getDisplay());
+        children.ah(context.prefixLocalHref(ccr.getLink()), ccr.getHint()).tx(ccr.getDisplay());
       }
       children.tx(")");
     }
@@ -460,7 +460,6 @@ public class AdditionalBindingsRenderer {
     AdditionalBindingDetail abr = new AdditionalBindingDetail();
     abr.purpose =  purpose;
     abr.valueSet =  valueSet.getUrl();
-    abr.vs = valueSet;
     bindings.add(abr);
   }
 

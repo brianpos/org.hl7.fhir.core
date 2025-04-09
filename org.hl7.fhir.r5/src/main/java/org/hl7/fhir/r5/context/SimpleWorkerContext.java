@@ -30,7 +30,6 @@ package org.hl7.fhir.r5.context;
  */
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -67,19 +66,22 @@ import org.hl7.fhir.r5.model.StructureMap.StructureMapStructureComponent;
 import org.hl7.fhir.r5.terminologies.JurisdictionUtilities;
 import org.hl7.fhir.r5.terminologies.client.ITerminologyClient;
 import org.hl7.fhir.r5.terminologies.client.TerminologyClientContext;
-import org.hl7.fhir.r5.terminologies.client.TerminologyClientManager;
 import org.hl7.fhir.r5.terminologies.client.TerminologyClientManager.ITerminologyClientFactory;
 import org.hl7.fhir.r5.terminologies.client.TerminologyClientR5;
 import org.hl7.fhir.r5.utils.validation.IResourceValidator;
+import org.hl7.fhir.r5.utils.validation.ValidatorSession;
 import org.hl7.fhir.r5.utils.R5Hacker;
+import org.hl7.fhir.r5.utils.UserDataNames;
 import org.hl7.fhir.r5.utils.XVerExtensionManager;
 import org.hl7.fhir.utilities.ByteProvider;
-import org.hl7.fhir.utilities.CSFileInputStream;
 import org.hl7.fhir.utilities.MagicResources;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.TimeTracker;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
+import org.hl7.fhir.utilities.filesystem.CSFileInputStream;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
 import org.hl7.fhir.utilities.npm.BasePackageCacheManager;
 import org.hl7.fhir.utilities.npm.NpmPackage;
@@ -93,25 +95,26 @@ import ca.uhn.fhir.parser.DataFormatException;
  * very light client to connect to an open unauthenticated terminology service
  */
 
+@MarkedToMoveToAdjunctPackage
 public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerContext {
 
   public static class PackageResourceLoader extends CanonicalResourceProxy {
 
     private final String filename;
     private final IContextResourceLoader loader;
-    private PackageInformation pi;
+    private final PackageInformation packageInformation;
 
     public PackageResourceLoader(PackageResourceInformation pri, IContextResourceLoader loader, PackageInformation pi) {
       super(pri.getResourceType(), pri.getId(), loader == null ? pri.getUrl() :loader.patchUrl(pri.getUrl(), pri.getResourceType()), pri.getVersion(), pri.getSupplements(), pri.getDerivation(), pri.getContent());
       this.filename = pri.getFilename();
       this.loader = loader;
-      this.pi = pi;
+      this.packageInformation = pi;
     }
 
     @Override
     public CanonicalResource loadResource() {
       try {
-        FileInputStream f = new FileInputStream(filename);
+        FileInputStream f = ManagedFileAccess.inStream(filename);
         try  {
           if (loader != null) {
             return setPi(R5Hacker.fixR5BrokenResource((CanonicalResource) loader.loadResource(f, true)));
@@ -127,7 +130,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     }
 
     private CanonicalResource setPi(CanonicalResource cr) {
-      cr.setSourcePackage(pi);
+      cr.setSourcePackage(packageInformation);
       return cr;
     }
   }
@@ -138,8 +141,8 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
   }
 
   public interface IValidatorFactory {
-    IResourceValidator makeValidator(IWorkerContext ctxt) throws FHIRException;
-    IResourceValidator makeValidator(IWorkerContext ctxts, XVerExtensionManager xverManager) throws FHIRException;
+    IResourceValidator makeValidator(IWorkerContext ctxt, ValidatorSession session) throws FHIRException;
+    IResourceValidator makeValidator(IWorkerContext ctxts, XVerExtensionManager xverManager, ValidatorSession session) throws FHIRException;
   }
 
 	private Questionnaire questionnaire;
@@ -213,7 +216,8 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     private final boolean allowLoadingDuplicates;
 
     @With
-    private final ILoggingService loggingService;
+    private final org.hl7.fhir.r5.context.ILoggingService loggingService;
+    private boolean defaultExpParams;
 
     public SimpleWorkerContextBuilder() {
       cacheTerminologyClientErrors = false;
@@ -240,10 +244,16 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     }
 
     private SimpleWorkerContext build(SimpleWorkerContext context) throws IOException {
+      if (VersionUtilities.isR2Ver(context.getVersion()) || VersionUtilities.isR2Ver(context.getVersion())) {
+        System.out.println("As of end 2024, FHIR R2 (version "+context.getVersion()+") is no longer officially supported.");
+      }
       context.initTxCache(terminologyCachePath);
       context.setUserAgent(userAgent);
       context.setLogger(loggingService);
       context.cacheResource(new org.hl7.fhir.r5.formats.JsonParser().parse(MagicResources.spdxCodesAsData()));
+      if (defaultExpParams) {
+        context.setExpansionParameters(makeExpProfile());
+      }
       return context;
     }
 
@@ -254,14 +264,23 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
       context.loadFromPackage(pi, null);
       return build(context);
     }
+    
+    private Parameters makeExpProfile() {
+      Parameters ep = new Parameters();
+      ep.addParameter("cache-id", UUID.randomUUID().toString().toLowerCase());
+      return ep;
+    }
 
     public SimpleWorkerContext fromPackage(NpmPackage pi, IContextResourceLoader loader, boolean genSnapshots) throws IOException, FHIRException {
       SimpleWorkerContext context = getSimpleWorkerContextInstance();
       context.setAllowLoadingDuplicates(allowLoadingDuplicates);      
-      context.version = pi.getNpm().asString("version");
+      context.version = pi.fhirVersion();
       context.terminologyClientManager.setFactory(loader.txFactory());
       context.loadFromPackage(pi, loader);
       context.finishLoading(genSnapshots);
+      if (defaultExpParams) {
+        context.setExpansionParameters(makeExpProfile());
+      }
       return build(context);
     }
 
@@ -318,6 +337,11 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     public SimpleWorkerContext fromNothing() throws FHIRException, IOException  {
       return build();
     }
+
+    public SimpleWorkerContextBuilder withDefaultParams() {
+      defaultExpParams = true;
+      return this;
+    }
   }
 
   private void loadDefinitionItem(String name, InputStream stream, IContextResourceLoader loader, ILoadFilter filter, PackageInformation pi) throws IOException, FHIRException {
@@ -328,15 +352,15 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     else if (name.equals("version.info"))
       readVersionInfo(stream);
     else
-      loadBytes(name, stream);
+      binaries.put(name, new BytesProvider(FileUtilities.streamToBytesNoClose(stream)));
   }
 
-  public void connectToTSServer(ITerminologyClientFactory factory, ITerminologyClient client) {
+  public void connectToTSServer(ITerminologyClientFactory factory, ITerminologyClient client, boolean useEcosystem) {
     terminologyClientManager.setFactory(factory);
     if (txLog == null) {
       txLog = client.getLogger();
     }
-    TerminologyClientContext tcc = terminologyClientManager.setMasterClient(client);
+    TerminologyClientContext tcc = terminologyClientManager.setMasterClient(client, useEcosystem);
     txLog("Connect to "+client.getAddress());
     try {
       tcc.initialize();  
@@ -356,19 +380,21 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     }      
   }
   
-  public void connectToTSServer(ITerminologyClientFactory factory, String address, String software, String log) {
+  public void connectToTSServer(ITerminologyClientFactory factory, String address, String software, String log, boolean useEcosystem) {
     try {
       terminologyClientManager.setFactory(factory);
-      if (log != null && (log.endsWith(".htm") || log.endsWith(".html"))) {
-        txLog = new HTMLClientLogger(log);
-      } else {
-        txLog = new TextClientLogger(log);
-      }      
+      if (log != null) {
+        if (log.endsWith(".htm") || log.endsWith(".html")) {
+          txLog = new HTMLClientLogger(log);
+        } else {
+          throw new IllegalArgumentException("Unknown extension for text file logging: \"" + log + "\" expected: .html or .htm");
+        }
+      }
       ITerminologyClient client = factory.makeClient("tx-server", address, software, txLog);
       // txFactory.makeClient("Tx-Server", txServer, "fhir/publisher", null)
 //      terminologyClientManager.setLogger(txLog);
 //      terminologyClientManager.setUserAgent(userAgent);
-      connectToTSServer(factory, client);
+      connectToTSServer(factory, client, useEcosystem);
       
     } catch (Exception e) {
       e.printStackTrace();
@@ -508,7 +534,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     
     String of = pi.getFolders().get("package").getFolderPath();
     if (of != null) {
-      oidSources.add(new OIDSource(of));
+      oidSources.add(new OIDSource(of, pi.vid()));
     }
     
     if ((types == null || types.size() == 0) &&  loader != null) {
@@ -536,7 +562,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
         if (!pri.getFilename().contains("ig-r4") && (loader == null || loader.wantLoad(pi, pri))) {
           try {
             if (!pri.hasId()) {
-              loadDefinitionItem(pri.getFilename(), new FileInputStream(pri.getFilename()), loader, null, pii);
+              loadDefinitionItem(pri.getFilename(), ManagedFileAccess.inStream(pri.getFilename()), loader, null, pii);
             } else {
               registerResourceFromPackage(new PackageResourceLoader(pri, loader, pii), pii);
             }
@@ -548,7 +574,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
       }
     }
 	  for (String s : pi.list("other")) {
-	    binaries.put(s, TextFile.streamToBytes(pi.load("other", s)));
+	    binaries.put(s, new BytesFromPackageProvider(pi, s));
 	  }
 	  if (version == null) {
 	    version = pi.version();
@@ -582,7 +608,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
 
   private void readVersionInfo(InputStream stream) throws IOException, DefinitionException {
     byte[] bytes = IOUtils.toByteArray(stream);
-    binaries.put("version.info", bytes);
+    binaries.put("version.info", new BytesProvider(bytes));
 
     String[] vi = new String(bytes).split("\\r?\\n");
     for (String s : vi) {
@@ -600,26 +626,18 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     }
   }
 
-	private void loadBytes(String name, InputStream stream) throws IOException {
-    byte[] bytes = IOUtils.toByteArray(stream);
-	  binaries.put(name, bytes);
-  }
-
 	@Override
 	public IResourceValidator newValidator() throws FHIRException {
 	  if (validatorFactory == null)
 	    throw new Error(formatMessage(I18nConstants.NO_VALIDATOR_CONFIGURED));
-	  return validatorFactory.makeValidator(this, xverManager).setJurisdiction(JurisdictionUtilities.getJurisdictionCodingFromLocale(Locale.getDefault().getCountry()));
+	  return validatorFactory.makeValidator(this, xverManager, null).setJurisdiction(JurisdictionUtilities.getJurisdictionCodingFromLocale(Locale.getDefault().getCountry()));
 	}
-
-
-
 
   @Override
   public List<String> getResourceNames() {
     Set<String> result = new HashSet<String>();
     for (StructureDefinition sd : listStructures()) {
-      if (sd.getKind() == StructureDefinitionKind.RESOURCE && sd.getDerivation() == TypeDerivationRule.SPECIALIZATION && !sd.hasUserData("old.load.mode"))
+      if (sd.getKind() == StructureDefinitionKind.RESOURCE && sd.getDerivation() == TypeDerivationRule.SPECIALIZATION && !sd.hasUserData(UserDataNames.loader_urls_patched))
         result.add(sd.getName());
     }
     return Utilities.sorted(result);
@@ -637,19 +655,19 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
  
 
   public void loadBinariesFromFolder(String folder) throws IOException {
-    for (String n : new File(folder).list()) {
-      loadBytes(n, new FileInputStream(Utilities.path(folder, n)));
+    for (String n : ManagedFileAccess.file(folder).list()) {
+      binaries.put(n, new BytesFromFileProvider(Utilities.path(folder, n)));
     }
   }
   
   public void loadBinariesFromFolder(NpmPackage pi) throws IOException {
     for (String n : pi.list("other")) {
-      loadBytes(n, pi.load("other", n));
+      binaries.put(n, new BytesFromPackageProvider(pi, n));
     }
   }
   
   public void loadFromFolder(String folder) throws IOException {
-    for (String n : new File(folder).list()) {
+    for (String n : ManagedFileAccess.file(folder).list()) {
       if (n.endsWith(".json")) 
         loadFromFile(Utilities.path(folder, n), new JsonParser());
       else if (n.endsWith(".xml")) 
@@ -660,7 +678,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
   private void loadFromFile(String filename, IParser p) {
   	Resource r; 
   	try {
-  		r = p.parse(new FileInputStream(filename));
+  		r = p.parse(ManagedFileAccess.inStream(filename));
       if (r.getResourceType() == ResourceType.Bundle) {
         for (BundleEntryComponent e : ((Bundle) r).getEntry()) {
           cacheResource(e.getResource());
@@ -717,7 +735,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
         // not sure what to do in this case?
         System.out.println("Unable to generate snapshot @3 for "+uri+": "+e.getMessage());
         if (logger.isDebugLogging()) {
-          e.printStackTrace();          
+          e.printStackTrace();
         }
       }
     }
@@ -732,33 +750,12 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
 
   @Override
   public <T extends Resource> T fetchResource(Class<T> class_, String uri, Resource source) {
-    T r = super.fetchResource(class_, uri, source);
-    if (r instanceof StructureDefinition) {
-      StructureDefinition p = (StructureDefinition)r;
-      if (!p.isGeneratedSnapshot()) {
-        if (p.isGeneratingSnapshot()) {
-          throw new FHIRException("Attempt to fetch the profile "+p.getVersionedUrl()+" while generating the snapshot for it");
-        }
-        try {
-          if (logger.isDebugLogging()) {
-            System.out.println("Generating snapshot for "+p.getVersionedUrl());
-          }
-          p.setGeneratingSnapshot(true);
-          try {
-            new ContextUtilities(this).generateSnapshot(p);
-          } finally {
-            p.setGeneratingSnapshot(false);      
-          }
-        } catch (Exception e) {
-          // not sure what to do in this case?
-          System.out.println("Unable to generate snapshot @4 for "+p.getVersionedUrl()+": "+e.getMessage());
-          if (logger.isDebugLogging()) {
-            e.printStackTrace();
-          }
-        }
-      }
+    T resource = super.fetchResource(class_, uri, source);
+    if (resource instanceof StructureDefinition) {
+      StructureDefinition structureDefinition = (StructureDefinition)resource;
+      generateSnapshot(structureDefinition, "4");
     }
-    return r;
+    return resource;
   }
 
 
@@ -805,7 +802,21 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
   }
 
   public boolean hasPackage(String idAndver) {
-    return loadedPackages.contains(idAndver);
+    if (loadedPackages.contains(idAndver)) {
+      return true;
+    }
+    // not clear whether the same logic should apply to other cross-version packages?
+    if (idAndver.startsWith("hl7.fhir.uv.extensions")) {
+      String v = idAndver.substring(idAndver.lastIndexOf("#")+1);
+      for (String s : loadedPackages) {
+        String v2 = s.substring(s.lastIndexOf("#")+1);
+        if (s.startsWith("hl7.fhir.uv.extensions.") && VersionUtilities.versionsMatch(v, v2)) {
+          return true;
+        }
+      }
+    }
+    return false;
+    
   }
 
   @Override

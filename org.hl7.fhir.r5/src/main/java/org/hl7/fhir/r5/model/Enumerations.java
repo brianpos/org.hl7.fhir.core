@@ -177,12 +177,14 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionCardinalityBehavior code '"+codeString+"'");
         }
     public String toCode(ActionCardinalityBehavior code) {
-      if (code == ActionCardinalityBehavior.SINGLE)
+       if (code == ActionCardinalityBehavior.NULL)
+           return null;
+       if (code == ActionCardinalityBehavior.SINGLE)
         return "single";
       if (code == ActionCardinalityBehavior.MULTIPLE)
         return "multiple";
       return "?";
-      }
+   }
     public String toSystem(ActionCardinalityBehavior code) {
       return code.getSystem();
       }
@@ -290,14 +292,16 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionConditionKind code '"+codeString+"'");
         }
     public String toCode(ActionConditionKind code) {
-      if (code == ActionConditionKind.APPLICABILITY)
+       if (code == ActionConditionKind.NULL)
+           return null;
+       if (code == ActionConditionKind.APPLICABILITY)
         return "applicability";
       if (code == ActionConditionKind.START)
         return "start";
       if (code == ActionConditionKind.STOP)
         return "stop";
       return "?";
-      }
+   }
     public String toSystem(ActionConditionKind code) {
       return code.getSystem();
       }
@@ -405,14 +409,16 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionGroupingBehavior code '"+codeString+"'");
         }
     public String toCode(ActionGroupingBehavior code) {
-      if (code == ActionGroupingBehavior.VISUALGROUP)
+       if (code == ActionGroupingBehavior.NULL)
+           return null;
+       if (code == ActionGroupingBehavior.VISUALGROUP)
         return "visual-group";
       if (code == ActionGroupingBehavior.LOGICALGROUP)
         return "logical-group";
       if (code == ActionGroupingBehavior.SENTENCEGROUP)
         return "sentence-group";
       return "?";
-      }
+   }
     public String toSystem(ActionGroupingBehavior code) {
       return code.getSystem();
       }
@@ -618,7 +624,9 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionParticipantType code '"+codeString+"'");
         }
     public String toCode(ActionParticipantType code) {
-      if (code == ActionParticipantType.CARETEAM)
+       if (code == ActionParticipantType.NULL)
+           return null;
+       if (code == ActionParticipantType.CARETEAM)
         return "careteam";
       if (code == ActionParticipantType.DEVICE)
         return "device";
@@ -639,7 +647,7 @@ public class Enumerations {
       if (code == ActionParticipantType.RELATEDPERSON)
         return "relatedperson";
       return "?";
-      }
+   }
     public String toSystem(ActionParticipantType code) {
       return code.getSystem();
       }
@@ -733,12 +741,14 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionPrecheckBehavior code '"+codeString+"'");
         }
     public String toCode(ActionPrecheckBehavior code) {
-      if (code == ActionPrecheckBehavior.YES)
+       if (code == ActionPrecheckBehavior.NULL)
+           return null;
+       if (code == ActionPrecheckBehavior.YES)
         return "yes";
       if (code == ActionPrecheckBehavior.NO)
         return "no";
       return "?";
-      }
+   }
     public String toSystem(ActionPrecheckBehavior code) {
       return code.getSystem();
       }
@@ -930,7 +940,9 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionRelationshipType code '"+codeString+"'");
         }
     public String toCode(ActionRelationshipType code) {
-      if (code == ActionRelationshipType.BEFORE)
+       if (code == ActionRelationshipType.NULL)
+           return null;
+       if (code == ActionRelationshipType.BEFORE)
         return "before";
       if (code == ActionRelationshipType.BEFORESTART)
         return "before-start";
@@ -949,7 +961,7 @@ public class Enumerations {
       if (code == ActionRelationshipType.AFTEREND)
         return "after-end";
       return "?";
-      }
+   }
     public String toSystem(ActionRelationshipType code) {
       return code.getSystem();
       }
@@ -1057,14 +1069,16 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionRequiredBehavior code '"+codeString+"'");
         }
     public String toCode(ActionRequiredBehavior code) {
-      if (code == ActionRequiredBehavior.MUST)
+       if (code == ActionRequiredBehavior.NULL)
+           return null;
+       if (code == ActionRequiredBehavior.MUST)
         return "must";
       if (code == ActionRequiredBehavior.COULD)
         return "could";
       if (code == ActionRequiredBehavior.MUSTUNLESSDOCUMENTED)
         return "must-unless-documented";
       return "?";
-      }
+   }
     public String toSystem(ActionRequiredBehavior code) {
       return code.getSystem();
       }
@@ -1214,7 +1228,9 @@ public class Enumerations {
         throw new FHIRException("Unknown ActionSelectionBehavior code '"+codeString+"'");
         }
     public String toCode(ActionSelectionBehavior code) {
-      if (code == ActionSelectionBehavior.ANY)
+       if (code == ActionSelectionBehavior.NULL)
+           return null;
+       if (code == ActionSelectionBehavior.ANY)
         return "any";
       if (code == ActionSelectionBehavior.ALL)
         return "all";
@@ -1227,7 +1243,7 @@ public class Enumerations {
       if (code == ActionSelectionBehavior.ONEORMORE)
         return "one-or-more";
       return "?";
-      }
+   }
     public String toSystem(ActionSelectionBehavior code) {
       return code.getSystem();
       }
@@ -1349,7 +1365,9 @@ public class Enumerations {
         throw new FHIRException("Unknown AdministrativeGender code '"+codeString+"'");
         }
     public String toCode(AdministrativeGender code) {
-      if (code == AdministrativeGender.MALE)
+       if (code == AdministrativeGender.NULL)
+           return null;
+       if (code == AdministrativeGender.MALE)
         return "male";
       if (code == AdministrativeGender.FEMALE)
         return "female";
@@ -1358,7 +1376,7 @@ public class Enumerations {
       if (code == AdministrativeGender.UNKNOWN)
         return "unknown";
       return "?";
-      }
+   }
     public String toSystem(AdministrativeGender code) {
       return code.getSystem();
       }
@@ -1424,8 +1442,10 @@ public class Enumerations {
         throw new FHIRException("Unknown AllLanguages code '"+codeString+"'");
         }
     public String toCode(AllLanguages code) {
-      return "?";
-      }
+       if (code == AllLanguages.NULL)
+           return null;
+       return "?";
+   }
     public String toSystem(AllLanguages code) {
       return code.getSystem();
       }
@@ -1547,7 +1567,9 @@ public class Enumerations {
         throw new FHIRException("Unknown BindingStrength code '"+codeString+"'");
         }
     public String toCode(BindingStrength code) {
-      if (code == BindingStrength.REQUIRED)
+       if (code == BindingStrength.NULL)
+           return null;
+       if (code == BindingStrength.REQUIRED)
         return "required";
       if (code == BindingStrength.EXTENSIBLE)
         return "extensible";
@@ -1556,7 +1578,7 @@ public class Enumerations {
       if (code == BindingStrength.EXAMPLE)
         return "example";
       return "?";
-      }
+   }
     public String toSystem(BindingStrength code) {
       return code.getSystem();
       }
@@ -1664,14 +1686,16 @@ public class Enumerations {
         throw new FHIRException("Unknown CapabilityStatementKind code '"+codeString+"'");
         }
     public String toCode(CapabilityStatementKind code) {
-      if (code == CapabilityStatementKind.INSTANCE)
+       if (code == CapabilityStatementKind.NULL)
+           return null;
+       if (code == CapabilityStatementKind.INSTANCE)
         return "instance";
       if (code == CapabilityStatementKind.CAPABILITY)
         return "capability";
       if (code == CapabilityStatementKind.REQUIREMENTS)
         return "requirements";
       return "?";
-      }
+   }
     public String toSystem(CapabilityStatementKind code) {
       return code.getSystem();
       }
@@ -1793,7 +1817,9 @@ public class Enumerations {
         throw new FHIRException("Unknown ClaimProcessingCodes code '"+codeString+"'");
         }
     public String toCode(ClaimProcessingCodes code) {
-      if (code == ClaimProcessingCodes.QUEUED)
+       if (code == ClaimProcessingCodes.NULL)
+           return null;
+       if (code == ClaimProcessingCodes.QUEUED)
         return "queued";
       if (code == ClaimProcessingCodes.COMPLETE)
         return "complete";
@@ -1802,7 +1828,7 @@ public class Enumerations {
       if (code == ClaimProcessingCodes.PARTIAL)
         return "partial";
       return "?";
-      }
+   }
     public String toSystem(ClaimProcessingCodes code) {
       return code.getSystem();
       }
@@ -1938,7 +1964,9 @@ public class Enumerations {
         throw new FHIRException("Unknown CodeSystemContentMode code '"+codeString+"'");
         }
     public String toCode(CodeSystemContentMode code) {
-      if (code == CodeSystemContentMode.NOTPRESENT)
+       if (code == CodeSystemContentMode.NULL)
+           return null;
+       if (code == CodeSystemContentMode.NOTPRESENT)
         return "not-present";
       if (code == CodeSystemContentMode.EXAMPLE)
         return "example";
@@ -1949,7 +1977,7 @@ public class Enumerations {
       if (code == CodeSystemContentMode.SUPPLEMENT)
         return "supplement";
       return "?";
-      }
+   }
     public String toSystem(CodeSystemContentMode code) {
       return code.getSystem();
       }
@@ -3163,7 +3191,9 @@ public class Enumerations {
         throw new FHIRException("Unknown CommonLanguages code '"+codeString+"'");
         }
     public String toCode(CommonLanguages code) {
-      if (code == CommonLanguages.AR)
+       if (code == CommonLanguages.NULL)
+           return null;
+       if (code == CommonLanguages.AR)
         return "ar";
       if (code == CommonLanguages.BG)
         return "bg";
@@ -3328,7 +3358,7 @@ public class Enumerations {
       if (code == CommonLanguages.ZHTW)
         return "zh-TW";
       return "?";
-      }
+   }
     public String toSystem(CommonLanguages code) {
       return code.getSystem();
       }
@@ -3362,6 +3392,10 @@ public class Enumerations {
         /**
          * added to help the parsers
          */
+        GROUP, 
+        /**
+         * added to help the parsers
+         */
         NULL;
         public static CompartmentType fromCode(String codeString) throws FHIRException {
             if (codeString == null || "".equals(codeString))
@@ -3378,6 +3412,8 @@ public class Enumerations {
           return DEVICE;
         if ("EpisodeOfCare".equals(codeString))
           return EPISODEOFCARE;
+        if ("Group".equals(codeString))
+          return GROUP;
         throw new FHIRException("Unknown CompartmentType code '"+codeString+"'");
         }
         public static boolean isValidCode(String codeString) {
@@ -3393,6 +3429,7 @@ public class Enumerations {
             case PRACTITIONER: return "Practitioner";
             case DEVICE: return "Device";
             case EPISODEOFCARE: return "EpisodeOfCare";
+            case GROUP: return "Group";
             case NULL: return null;
             default: return "?";
           }
@@ -3405,6 +3442,7 @@ public class Enumerations {
             case PRACTITIONER: return "http://hl7.org/fhir/compartment-type";
             case DEVICE: return "http://hl7.org/fhir/compartment-type";
             case EPISODEOFCARE: return "http://hl7.org/fhir/compartment-type";
+            case GROUP: return "http://hl7.org/fhir/compartment-type";
             case NULL: return null;
             default: return "?";
           }
@@ -3417,6 +3455,7 @@ public class Enumerations {
             case PRACTITIONER: return "The compartment definition is for the practitioner compartment.";
             case DEVICE: return "The compartment definition is for the device compartment.";
             case EPISODEOFCARE: return "The compartment definition is for the episodeofcare compartment.";
+            case GROUP: return "The compartment definition is for the Group compartment.";
             case NULL: return null;
             default: return "?";
           }
@@ -3429,6 +3468,7 @@ public class Enumerations {
             case PRACTITIONER: return "Practitioner";
             case DEVICE: return "Device";
             case EPISODEOFCARE: return "EpisodeOfCare";
+            case GROUP: return "Group";
             case NULL: return null;
             default: return "?";
           }
@@ -3452,6 +3492,8 @@ public class Enumerations {
           return CompartmentType.DEVICE;
         if ("EpisodeOfCare".equals(codeString))
           return CompartmentType.EPISODEOFCARE;
+        if ("Group".equals(codeString))
+          return CompartmentType.GROUP;
         throw new IllegalArgumentException("Unknown CompartmentType code '"+codeString+"'");
         }
 
@@ -3475,10 +3517,14 @@ public class Enumerations {
           return new Enumeration<CompartmentType>(this, CompartmentType.DEVICE, code);
         if ("EpisodeOfCare".equals(codeString))
           return new Enumeration<CompartmentType>(this, CompartmentType.EPISODEOFCARE, code);
+        if ("Group".equals(codeString))
+          return new Enumeration<CompartmentType>(this, CompartmentType.GROUP, code);
         throw new FHIRException("Unknown CompartmentType code '"+codeString+"'");
         }
     public String toCode(CompartmentType code) {
-      if (code == CompartmentType.PATIENT)
+       if (code == CompartmentType.NULL)
+           return null;
+       if (code == CompartmentType.PATIENT)
         return "Patient";
       if (code == CompartmentType.ENCOUNTER)
         return "Encounter";
@@ -3490,8 +3536,10 @@ public class Enumerations {
         return "Device";
       if (code == CompartmentType.EPISODEOFCARE)
         return "EpisodeOfCare";
+      if (code == CompartmentType.GROUP)
+        return "Group";
       return "?";
-      }
+   }
     public String toSystem(CompartmentType code) {
       return code.getSystem();
       }
@@ -3711,7 +3759,9 @@ public class Enumerations {
         throw new FHIRException("Unknown CompositionStatus code '"+codeString+"'");
         }
     public String toCode(CompositionStatus code) {
-      if (code == CompositionStatus.REGISTERED)
+       if (code == CompositionStatus.NULL)
+           return null;
+       if (code == CompositionStatus.REGISTERED)
         return "registered";
       if (code == CompositionStatus.PARTIAL)
         return "partial";
@@ -3734,7 +3784,7 @@ public class Enumerations {
       if (code == CompositionStatus.UNKNOWN)
         return "unknown";
       return "?";
-      }
+   }
     public String toSystem(CompositionStatus code) {
       return code.getSystem();
       }
@@ -3829,6 +3879,17 @@ public class Enumerations {
             default: return "?";
           }
         }
+        public String getSymbol() {
+          switch (this) {
+          case RELATEDTO: return "-";
+          case EQUIVALENT: return "=";
+          case SOURCEISNARROWERTHANTARGET: return "<";
+          case SOURCEISBROADERTHANTARGET: return ">";
+          case NOTRELATEDTO: return "!=";
+          case NULL: return null;
+          default: return "?";
+        }
+        }
     }
 
   public static class ConceptMapRelationshipEnumFactory implements EnumFactory<ConceptMapRelationship> {
@@ -3870,7 +3931,9 @@ public class Enumerations {
         throw new FHIRException("Unknown ConceptMapRelationship code '"+codeString+"'");
         }
     public String toCode(ConceptMapRelationship code) {
-      if (code == ConceptMapRelationship.RELATEDTO)
+       if (code == ConceptMapRelationship.NULL)
+           return null;
+       if (code == ConceptMapRelationship.RELATEDTO)
         return "related-to";
       if (code == ConceptMapRelationship.EQUIVALENT)
         return "equivalent";
@@ -3881,7 +3944,7 @@ public class Enumerations {
       if (code == ConceptMapRelationship.NOTRELATEDTO)
         return "not-related-to";
       return "?";
-      }
+   }
     public String toSystem(ConceptMapRelationship code) {
       return code.getSystem();
       }
@@ -4003,7 +4066,9 @@ public class Enumerations {
         throw new FHIRException("Unknown ConsentDataMeaning code '"+codeString+"'");
         }
     public String toCode(ConsentDataMeaning code) {
-      if (code == ConsentDataMeaning.INSTANCE)
+       if (code == ConsentDataMeaning.NULL)
+           return null;
+       if (code == ConsentDataMeaning.INSTANCE)
         return "instance";
       if (code == ConsentDataMeaning.RELATED)
         return "related";
@@ -4012,7 +4077,7 @@ public class Enumerations {
       if (code == ConsentDataMeaning.AUTHOREDBY)
         return "authoredby";
       return "?";
-      }
+   }
     public String toSystem(ConsentDataMeaning code) {
       return code.getSystem();
       }
@@ -4106,12 +4171,14 @@ public class Enumerations {
         throw new FHIRException("Unknown ConsentProvisionType code '"+codeString+"'");
         }
     public String toCode(ConsentProvisionType code) {
-      if (code == ConsentProvisionType.DENY)
+       if (code == ConsentProvisionType.NULL)
+           return null;
+       if (code == ConsentProvisionType.DENY)
         return "deny";
       if (code == ConsentProvisionType.PERMIT)
         return "permit";
       return "?";
-      }
+   }
     public String toSystem(ConsentProvisionType code) {
       return code.getSystem();
       }
@@ -6725,7 +6792,9 @@ public class Enumerations {
         throw new FHIRException("Unknown Currencies code '"+codeString+"'");
         }
     public String toCode(Currencies code) {
-      if (code == Currencies.AED)
+       if (code == Currencies.NULL)
+           return null;
+       if (code == Currencies.AED)
         return "AED";
       if (code == Currencies.AFN)
         return "AFN";
@@ -7090,7 +7159,7 @@ public class Enumerations {
       if (code == Currencies.ZWL)
         return "ZWL";
       return "?";
-      }
+   }
     public String toSystem(Currencies code) {
       return code.getSystem();
       }
@@ -7254,7 +7323,9 @@ public class Enumerations {
         throw new FHIRException("Unknown DaysOfWeek code '"+codeString+"'");
         }
     public String toCode(DaysOfWeek code) {
-      if (code == DaysOfWeek.MON)
+       if (code == DaysOfWeek.NULL)
+           return null;
+       if (code == DaysOfWeek.MON)
         return "mon";
       if (code == DaysOfWeek.TUE)
         return "tue";
@@ -7269,7 +7340,7 @@ public class Enumerations {
       if (code == DaysOfWeek.SUN)
         return "sun";
       return "?";
-      }
+   }
     public String toSystem(DaysOfWeek code) {
       return code.getSystem();
       }
@@ -7377,14 +7448,16 @@ public class Enumerations {
         throw new FHIRException("Unknown DeviceNameType code '"+codeString+"'");
         }
     public String toCode(DeviceNameType code) {
-      if (code == DeviceNameType.REGISTEREDNAME)
+       if (code == DeviceNameType.NULL)
+           return null;
+       if (code == DeviceNameType.REGISTEREDNAME)
         return "registered-name";
       if (code == DeviceNameType.USERFRIENDLYNAME)
         return "user-friendly-name";
       if (code == DeviceNameType.PATIENTREPORTEDNAME)
         return "patient-reported-name";
       return "?";
-      }
+   }
     public String toSystem(DeviceNameType code) {
       return code.getSystem();
       }
@@ -7576,7 +7649,9 @@ public class Enumerations {
         throw new FHIRException("Unknown EncounterStatus code '"+codeString+"'");
         }
     public String toCode(EncounterStatus code) {
-      if (code == EncounterStatus.PLANNED)
+       if (code == EncounterStatus.NULL)
+           return null;
+       if (code == EncounterStatus.PLANNED)
         return "planned";
       if (code == EncounterStatus.INPROGRESS)
         return "in-progress";
@@ -7595,7 +7670,7 @@ public class Enumerations {
       if (code == EncounterStatus.UNKNOWN)
         return "unknown";
       return "?";
-      }
+   }
     public String toSystem(EncounterStatus code) {
       return code.getSystem();
       }
@@ -7773,7 +7848,9 @@ public class Enumerations {
         throw new FHIRException("Unknown EventStatus code '"+codeString+"'");
         }
     public String toCode(EventStatus code) {
-      if (code == EventStatus.PREPARATION)
+       if (code == EventStatus.NULL)
+           return null;
+       if (code == EventStatus.PREPARATION)
         return "preparation";
       if (code == EventStatus.INPROGRESS)
         return "in-progress";
@@ -7790,7 +7867,7 @@ public class Enumerations {
       if (code == EventStatus.UNKNOWN)
         return "unknown";
       return "?";
-      }
+   }
     public String toSystem(EventStatus code) {
       return code.getSystem();
       }
@@ -7912,7 +7989,9 @@ public class Enumerations {
         throw new FHIRException("Unknown EvidenceVariableHandling code '"+codeString+"'");
         }
     public String toCode(EvidenceVariableHandling code) {
-      if (code == EvidenceVariableHandling.CONTINUOUS)
+       if (code == EvidenceVariableHandling.NULL)
+           return null;
+       if (code == EvidenceVariableHandling.CONTINUOUS)
         return "continuous";
       if (code == EvidenceVariableHandling.DICHOTOMOUS)
         return "dichotomous";
@@ -7921,7 +8000,7 @@ public class Enumerations {
       if (code == EvidenceVariableHandling.POLYCHOTOMOUS)
         return "polychotomous";
       return "?";
-      }
+   }
     public String toSystem(EvidenceVariableHandling code) {
       return code.getSystem();
       }
@@ -8015,12 +8094,14 @@ public class Enumerations {
         throw new FHIRException("Unknown ExampleScenarioActorType code '"+codeString+"'");
         }
     public String toCode(ExampleScenarioActorType code) {
-      if (code == ExampleScenarioActorType.PERSON)
+       if (code == ExampleScenarioActorType.NULL)
+           return null;
+       if (code == ExampleScenarioActorType.PERSON)
         return "person";
       if (code == ExampleScenarioActorType.SYSTEM)
         return "system";
       return "?";
-      }
+   }
     public String toSystem(ExampleScenarioActorType code) {
       return code.getSystem();
       }
@@ -11323,7 +11404,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown FHIRTypes code '"+codeString+"'");
         }
     public String toCode(FHIRTypes code) {
-      if (code == FHIRTypes.BASE)
+       if (code == FHIRTypes.NULL)
+           return null;
+       if (code == FHIRTypes.BASE)
         return "Base";
       if (code == FHIRTypes.ELEMENT)
         return "Element";
@@ -11786,7 +11869,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == FHIRTypes.PARAMETERS)
         return "Parameters";
       return "?";
-      }
+   }
     public String toSystem(FHIRTypes code) {
       return code.getSystem();
       }
@@ -12030,6 +12113,8 @@ The primary difference between a medicationstatement and a medicationadministrat
          */
         _6_0_0, 
         _6_0_0_BALLOT1, 
+        _6_0_0_BALLOT2, 
+        _6_0_0_BALLOT3, 
         /**
          * added to help the parsers
          */
@@ -12157,6 +12242,10 @@ The primary difference between a medicationstatement and a medicationadministrat
           return _6_0_0;
         if ("6.0.0-ballot1".equals(codeString))
           return _6_0_0_BALLOT1;
+        if ("6.0.0-ballot2".equals(codeString))
+          return _6_0_0_BALLOT2;
+        if ("6.0.0-ballot3".equals(codeString))
+          return _6_0_0_BALLOT3;
         throw new FHIRException("Unknown FHIRVersion code '"+codeString+"'");
         }
         public static boolean isValidCode(String codeString) {
@@ -12226,6 +12315,8 @@ The primary difference between a medicationstatement and a medicationadministrat
             case _6_0_0CIBUILD: return "6.0.0-cibuild";
             case _6_0_0: return "6.0.0";
             case _6_0_0_BALLOT1: return "6.0.0-ballot1";
+            case _6_0_0_BALLOT2: return "6.0.0-ballot2";
+            case _6_0_0_BALLOT3: return "6.0.0-ballot3";
             case NULL: return null;
             default: return "?";
           }
@@ -12424,6 +12515,8 @@ The primary difference between a medicationstatement and a medicationadministrat
             case _6_0_0CIBUILD: return "6.0.0-cibuild";
             case _6_0_0: return "6.0.0";
             case _6_0_0_BALLOT1: return "6.0.0-ballot1";
+            case _6_0_0_BALLOT2: return "6.0.0-ballot2";
+            case _6_0_0_BALLOT3: return "6.0.0-ballot3";
             case NULL: return null;
             default: return "?";
           }
@@ -12572,6 +12665,10 @@ The primary difference between a medicationstatement and a medicationadministrat
           return FHIRVersion._6_0_0;
         if ("6.0.0-ballot1".equals(codeString))
           return FHIRVersion._6_0_0_BALLOT1;
+        if ("6.0.0-ballot2".equals(codeString))
+          return FHIRVersion._6_0_0_BALLOT2;
+        if ("6.0.0-ballot3".equals(codeString))
+          return FHIRVersion._6_0_0_BALLOT3;
         throw new IllegalArgumentException("Unknown FHIRVersion code '"+codeString+"'");
         }
 
@@ -12703,10 +12800,16 @@ The primary difference between a medicationstatement and a medicationadministrat
           return new Enumeration<FHIRVersion>(this, FHIRVersion._6_0_0, code);
         if ("6.0.0-ballot1".equals(codeString))
           return new Enumeration<FHIRVersion>(this, FHIRVersion._6_0_0_BALLOT1, code);
+        if ("6.0.0-ballot2".equals(codeString))
+          return new Enumeration<FHIRVersion>(this, FHIRVersion._6_0_0_BALLOT2, code);
+        if ("6.0.0-ballot3".equals(codeString))
+          return new Enumeration<FHIRVersion>(this, FHIRVersion._6_0_0_BALLOT3, code);
         throw new FHIRException("Unknown FHIRVersion code '"+codeString+"'");        
         }
     public String toCode(FHIRVersion code) {
-      if (code == FHIRVersion._0_01)
+       if (code == FHIRVersion.NULL)
+           return null;
+       if (code == FHIRVersion._0_01)
         return "0.01";
       if (code == FHIRVersion._0_05)
         return "0.05";
@@ -12827,8 +12930,14 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == FHIRVersion._6_0_0_BALLOT1) {
         return "6.0.0-ballot1";
       }
-      return "?";
+      if (code == FHIRVersion._6_0_0_BALLOT2) {
+        return "6.0.0-ballot2";
       }
+      if (code == FHIRVersion._6_0_0_BALLOT3) {
+        return "6.0.0-ballot3";
+      }
+      return "?";
+   }
     public String toSystem(FHIRVersion code) {
       return code.getSystem();
       }
@@ -13048,7 +13157,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown FilterOperator code '"+codeString+"'");
         }
     public String toCode(FilterOperator code) {
-      if (code == FilterOperator.EQUAL)
+       if (code == FilterOperator.NULL)
+           return null;
+       if (code == FilterOperator.EQUAL)
         return "=";
       if (code == FilterOperator.ISA)
         return "is-a";
@@ -13071,7 +13182,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == FilterOperator.EXISTS)
         return "exists";
       return "?";
-      }
+   }
     public String toSystem(FilterOperator code) {
       return code.getSystem();
       }
@@ -13193,7 +13304,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown FinancialResourceStatusCodes code '"+codeString+"'");
         }
     public String toCode(FinancialResourceStatusCodes code) {
-      if (code == FinancialResourceStatusCodes.ACTIVE)
+       if (code == FinancialResourceStatusCodes.NULL)
+           return null;
+       if (code == FinancialResourceStatusCodes.ACTIVE)
         return "active";
       if (code == FinancialResourceStatusCodes.CANCELLED)
         return "cancelled";
@@ -13202,7 +13315,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == FinancialResourceStatusCodes.ENTEREDINERROR)
         return "entered-in-error";
       return "?";
-      }
+   }
     public String toSystem(FinancialResourceStatusCodes code) {
       return code.getSystem();
       }
@@ -13310,14 +13423,16 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown ListMode code '"+codeString+"'");
         }
     public String toCode(ListMode code) {
-      if (code == ListMode.WORKING)
+       if (code == ListMode.NULL)
+           return null;
+       if (code == ListMode.WORKING)
         return "working";
       if (code == ListMode.SNAPSHOT)
         return "snapshot";
       if (code == ListMode.CHANGES)
         return "changes";
       return "?";
-      }
+   }
     public String toSystem(ListMode code) {
       return code.getSystem();
       }
@@ -13411,12 +13526,14 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown MeasureImprovementNotation code '"+codeString+"'");
         }
     public String toCode(MeasureImprovementNotation code) {
-      if (code == MeasureImprovementNotation.INCREASE)
+       if (code == MeasureImprovementNotation.NULL)
+           return null;
+       if (code == MeasureImprovementNotation.INCREASE)
         return "increase";
       if (code == MeasureImprovementNotation.DECREASE)
         return "decrease";
       return "?";
-      }
+   }
     public String toSystem(MeasureImprovementNotation code) {
       return code.getSystem();
       }
@@ -13482,8 +13599,10 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown MimeTypes code '"+codeString+"'");
         }
     public String toCode(MimeTypes code) {
-      return "?";
-      }
+       if (code == MimeTypes.NULL)
+           return null;
+       return "?";
+   }
     public String toSystem(MimeTypes code) {
       return code.getSystem();
       }
@@ -13661,7 +13780,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown ObservationStatus code '"+codeString+"'");
         }
     public String toCode(ObservationStatus code) {
-      if (code == ObservationStatus.REGISTERED)
+       if (code == ObservationStatus.NULL)
+           return null;
+       if (code == ObservationStatus.REGISTERED)
         return "registered";
       if (code == ObservationStatus.PRELIMINARY)
         return "preliminary";
@@ -13678,7 +13799,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == ObservationStatus.UNKNOWN)
         return "unknown";
       return "?";
-      }
+   }
     public String toSystem(ObservationStatus code) {
       return code.getSystem();
       }
@@ -13772,12 +13893,14 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown OperationParameterUse code '"+codeString+"'");
         }
     public String toCode(OperationParameterUse code) {
-      if (code == OperationParameterUse.IN)
+       if (code == OperationParameterUse.NULL)
+           return null;
+       if (code == OperationParameterUse.IN)
         return "in";
       if (code == OperationParameterUse.OUT)
         return "out";
       return "?";
-      }
+   }
     public String toSystem(OperationParameterUse code) {
       return code.getSystem();
       }
@@ -13899,7 +14022,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown PublicationStatus code '"+codeString+"'");
         }
     public String toCode(PublicationStatus code) {
-      if (code == PublicationStatus.DRAFT)
+       if (code == PublicationStatus.NULL)
+           return null;
+       if (code == PublicationStatus.DRAFT)
         return "draft";
       if (code == PublicationStatus.ACTIVE)
         return "active";
@@ -13908,7 +14033,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == PublicationStatus.UNKNOWN)
         return "unknown";
       return "?";
-      }
+   }
     public String toSystem(PublicationStatus code) {
       return code.getSystem();
       }
@@ -14044,7 +14169,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown QuantityComparator code '"+codeString+"'");
         }
     public String toCode(QuantityComparator code) {
-      if (code == QuantityComparator.LESS_THAN)
+       if (code == QuantityComparator.NULL)
+           return null;
+       if (code == QuantityComparator.LESS_THAN)
         return "<";
       if (code == QuantityComparator.LESS_OR_EQUAL)
         return "<=";
@@ -14055,7 +14182,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == QuantityComparator.AD)
         return "ad";
       return "?";
-      }
+   }
     public String toSystem(QuantityComparator code) {
       return code.getSystem();
       }
@@ -14247,7 +14374,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown RequestIntent code '"+codeString+"'");
         }
     public String toCode(RequestIntent code) {
-      if (code == RequestIntent.PROPOSAL)
+       if (code == RequestIntent.NULL)
+           return null;
+       if (code == RequestIntent.PROPOSAL)
         return "proposal";
       if (code == RequestIntent.PLAN)
         return "plan";
@@ -14266,7 +14395,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == RequestIntent.OPTION)
         return "option";
       return "?";
-      }
+   }
     public String toSystem(RequestIntent code) {
       return code.getSystem();
       }
@@ -14388,7 +14517,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown RequestPriority code '"+codeString+"'");
         }
     public String toCode(RequestPriority code) {
-      if (code == RequestPriority.ROUTINE)
+       if (code == RequestPriority.NULL)
+           return null;
+       if (code == RequestPriority.ROUTINE)
         return "routine";
       if (code == RequestPriority.URGENT)
         return "urgent";
@@ -14397,7 +14528,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == RequestPriority.STAT)
         return "stat";
       return "?";
-      }
+   }
     public String toSystem(RequestPriority code) {
       return code.getSystem();
       }
@@ -14561,7 +14692,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown RequestStatus code '"+codeString+"'");
         }
     public String toCode(RequestStatus code) {
-      if (code == RequestStatus.DRAFT)
+       if (code == RequestStatus.NULL)
+           return null;
+       if (code == RequestStatus.DRAFT)
         return "draft";
       if (code == RequestStatus.ACTIVE)
         return "active";
@@ -14576,7 +14709,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == RequestStatus.UNKNOWN)
         return "unknown";
       return "?";
-      }
+   }
     public String toSystem(RequestStatus code) {
       return code.getSystem();
       }
@@ -16856,7 +16989,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown ResourceTypeEnum code '"+codeString+"'");
         }
     public String toCode(ResourceTypeEnum code) {
-      if (code == ResourceTypeEnum.ACCOUNT)
+       if (code == ResourceTypeEnum.NULL)
+           return null;
+       if (code == ResourceTypeEnum.ACCOUNT)
         return "Account";
       if (code == ResourceTypeEnum.ACTIVITYDEFINITION)
         return "ActivityDefinition";
@@ -17173,7 +17308,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == ResourceTypeEnum.VISIONPRESCRIPTION)
         return "VisionPrescription";
       return "?";
-      }
+   }
     public String toSystem(ResourceTypeEnum code) {
       return code.getSystem();
       }
@@ -17365,7 +17500,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown SearchComparator code '"+codeString+"'");
         }
     public String toCode(SearchComparator code) {
-      if (code == SearchComparator.EQ)
+       if (code == SearchComparator.NULL)
+           return null;
+       if (code == SearchComparator.EQ)
         return "eq";
       if (code == SearchComparator.NE)
         return "ne";
@@ -17384,7 +17521,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == SearchComparator.AP)
         return "ap";
       return "?";
-      }
+   }
     public String toSystem(SearchComparator code) {
       return code.getSystem();
       }
@@ -17660,7 +17797,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown SearchModifierCode code '"+codeString+"'");
         }
     public String toCode(SearchModifierCode code) {
-      if (code == SearchModifierCode.MISSING)
+       if (code == SearchModifierCode.NULL)
+           return null;
+       if (code == SearchModifierCode.MISSING)
         return "missing";
       if (code == SearchModifierCode.EXACT)
         return "exact";
@@ -17691,7 +17830,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == SearchModifierCode.ITERATE)
         return "iterate";
       return "?";
-      }
+   }
     public String toSystem(SearchModifierCode code) {
       return code.getSystem();
       }
@@ -17734,6 +17873,7 @@ The primary difference between a medicationstatement and a medicationadministrat
          * Special logic applies to this parameter per the description of the search parameter.
          */
         SPECIAL, 
+        RESOURCE, // R6 hack
         /**
          * added to help the parsers
          */
@@ -17759,12 +17899,14 @@ The primary difference between a medicationstatement and a medicationadministrat
           return URI;
         if ("special".equals(codeString))
           return SPECIAL;
+        if ("resource".equals(codeString))
+          return RESOURCE;
         throw new FHIRException("Unknown SearchParamType code '"+codeString+"'");
         }
         public static boolean isValidCode(String codeString) {
             if (codeString == null || "".equals(codeString))
                 return false;
-          return Utilities.existsInList(codeString, "number", "date", "string", "token", "reference", "composite", "quantity", "uri", "special");
+          return Utilities.existsInList(codeString, "number", "date", "string", "token", "reference", "composite", "quantity", "uri", "special", "resource");
         }
         public String toCode() {
           switch (this) {
@@ -17777,6 +17919,7 @@ The primary difference between a medicationstatement and a medicationadministrat
             case QUANTITY: return "quantity";
             case URI: return "uri";
             case SPECIAL: return "special";
+            case RESOURCE: return "resource";
             case NULL: return null;
             default: return "?";
           }
@@ -17792,6 +17935,7 @@ The primary difference between a medicationstatement and a medicationadministrat
             case QUANTITY: return "http://hl7.org/fhir/search-param-type";
             case URI: return "http://hl7.org/fhir/search-param-type";
             case SPECIAL: return "http://hl7.org/fhir/search-param-type";
+            case RESOURCE: return "http://hl7.org/fhir/search-param-type";
             case NULL: return null;
             default: return "?";
           }
@@ -17807,6 +17951,7 @@ The primary difference between a medicationstatement and a medicationadministrat
             case QUANTITY: return "A search parameter that searches on a quantity.";
             case URI: return "A search parameter that searches on a URI (RFC 3986).";
             case SPECIAL: return "Special logic applies to this parameter per the description of the search parameter.";
+            case RESOURCE: return "Special logic applies to this parameter per the description of the search parameter.";
             case NULL: return null;
             default: return "?";
           }
@@ -17822,6 +17967,7 @@ The primary difference between a medicationstatement and a medicationadministrat
             case QUANTITY: return "Quantity";
             case URI: return "URI";
             case SPECIAL: return "Special";
+            case RESOURCE: return "Resource";
             case NULL: return null;
             default: return "?";
           }
@@ -17851,6 +17997,8 @@ The primary difference between a medicationstatement and a medicationadministrat
           return SearchParamType.URI;
         if ("special".equals(codeString))
           return SearchParamType.SPECIAL;
+        if ("resource".equals(codeString))
+          return SearchParamType.RESOURCE;
         throw new IllegalArgumentException("Unknown SearchParamType code '"+codeString+"'");
         }
 
@@ -17880,10 +18028,14 @@ The primary difference between a medicationstatement and a medicationadministrat
           return new Enumeration<SearchParamType>(this, SearchParamType.URI, code);
         if ("special".equals(codeString))
           return new Enumeration<SearchParamType>(this, SearchParamType.SPECIAL, code);
+        if ("resource".equals(codeString))
+          return new Enumeration<SearchParamType>(this, SearchParamType.RESOURCE, code);
         throw new FHIRException("Unknown SearchParamType code '"+codeString+"'");
         }
     public String toCode(SearchParamType code) {
-      if (code == SearchParamType.NUMBER)
+       if (code == SearchParamType.NULL)
+           return null;
+       if (code == SearchParamType.NUMBER)
         return "number";
       if (code == SearchParamType.DATE)
         return "date";
@@ -17901,8 +18053,10 @@ The primary difference between a medicationstatement and a medicationadministrat
         return "uri";
       if (code == SearchParamType.SPECIAL)
         return "special";
+      if (code == SearchParamType.RESOURCE)
+        return "resource";
       return "?";
-      }
+   }
     public String toSystem(SearchParamType code) {
       return code.getSystem();
       }
@@ -18038,7 +18192,9 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown SubscriptionStatusCodes code '"+codeString+"'");
         }
     public String toCode(SubscriptionStatusCodes code) {
-      if (code == SubscriptionStatusCodes.REQUESTED)
+       if (code == SubscriptionStatusCodes.NULL)
+           return null;
+       if (code == SubscriptionStatusCodes.REQUESTED)
         return "requested";
       if (code == SubscriptionStatusCodes.ACTIVE)
         return "active";
@@ -18049,7 +18205,7 @@ The primary difference between a medicationstatement and a medicationadministrat
       if (code == SubscriptionStatusCodes.ENTEREDINERROR)
         return "entered-in-error";
       return "?";
-      }
+   }
     public String toSystem(SubscriptionStatusCodes code) {
       return code.getSystem();
       }
@@ -18157,14 +18313,16 @@ The primary difference between a medicationstatement and a medicationadministrat
         throw new FHIRException("Unknown Use code '"+codeString+"'");
         }
     public String toCode(Use code) {
-      if (code == Use.CLAIM)
+       if (code == Use.NULL)
+           return null;
+       if (code == Use.CLAIM)
         return "claim";
       if (code == Use.PREAUTHORIZATION)
         return "preauthorization";
       if (code == Use.PREDETERMINATION)
         return "predetermination";
       return "?";
-      }
+   }
     public String toSystem(Use code) {
       return code.getSystem();
       }
@@ -18984,9 +19142,17 @@ The primary difference between a medicationstatement and a medicationadministrat
         /**
          * null
          */
-        SUBSTANCESPECIFICATION, 
+        SUBSTANCESPECIFICATION,
         /**
-         * added to help the parsers
+         * Added in R6
+         */
+        MOLECULARDEFINITION,
+        /**
+         * Added in R6
+         */
+        CLINICALASSESSMENT,
+        /**
+           * added to help the parsers
          */
         NULL;
         public static VersionIndependentResourceTypesAll fromCode(String codeString) throws FHIRException {
@@ -19396,8 +19562,13 @@ The primary difference between a medicationstatement and a medicationadministrat
           return SEQUENCE;
         if ("ServiceDefinition".equals(codeString))
           return SERVICEDEFINITION;
-        if ("SubstanceSpecification".equals(codeString))
-          return SUBSTANCESPECIFICATION;
+          if ("SubstanceSpecification".equals(codeString))
+            return SUBSTANCESPECIFICATION;
+          if ("MolecularDefinition".equals(codeString))
+            return MOLECULARDEFINITION;
+          if ("ClinicalAssessment".equals(codeString))
+            return CLINICALASSESSMENT;
+          
         throw new FHIRException("Unknown VersionIndependentResourceTypesAll code '"+codeString+"'");
         }
         public static boolean isValidCode(String codeString) {
@@ -19610,6 +19781,8 @@ The primary difference between a medicationstatement and a medicationadministrat
             case SEQUENCE: return "Sequence";
             case SERVICEDEFINITION: return "ServiceDefinition";
             case SUBSTANCESPECIFICATION: return "SubstanceSpecification";
+            case MOLECULARDEFINITION: return "MolecularDefinition";
+            case CLINICALASSESSMENT: return "ClinicalAssessment";
             case NULL: return null;
             default: return "?";
           }
@@ -19819,6 +19992,8 @@ The primary difference between a medicationstatement and a medicationadministrat
             case SEQUENCE: return "http://hl7.org/fhir/fhir-old-types";
             case SERVICEDEFINITION: return "http://hl7.org/fhir/fhir-old-types";
             case SUBSTANCESPECIFICATION: return "http://hl7.org/fhir/fhir-old-types";
+            case MOLECULARDEFINITION: return "http://hl7.org/fhir/fhir-old-types";
+            case CLINICALASSESSMENT: return "http://hl7.org/fhir/fhir-types";
             case NULL: return null;
             default: return "?";
           }
@@ -20028,6 +20203,8 @@ The primary difference between a medicationstatement and a medicationadministrat
             case SEQUENCE: return "";
             case SERVICEDEFINITION: return "";
             case SUBSTANCESPECIFICATION: return "";
+            case MOLECULARDEFINITION: return "";
+            case CLINICALASSESSMENT: return "";
             case NULL: return null;
             default: return "?";
           }
@@ -20237,6 +20414,8 @@ The primary difference between a medicationstatement and a medicationadministrat
             case SEQUENCE: return "Sequence";
             case SERVICEDEFINITION: return "ServiceDefinition";
             case SUBSTANCESPECIFICATION: return "SubstanceSpecification";
+            case MOLECULARDEFINITION: return "MolecularDefinition";
+            case CLINICALASSESSMENT: return "ClinicalAssessment";
             case NULL: return null;
             default: return "?";
           }
@@ -20652,8 +20831,12 @@ The primary difference between a medicationstatement and a medicationadministrat
           return VersionIndependentResourceTypesAll.SEQUENCE;
         if ("ServiceDefinition".equals(codeString))
           return VersionIndependentResourceTypesAll.SERVICEDEFINITION;
-        if ("SubstanceSpecification".equals(codeString))
-          return VersionIndependentResourceTypesAll.SUBSTANCESPECIFICATION;
+      if ("SubstanceSpecification".equals(codeString))
+        return VersionIndependentResourceTypesAll.SUBSTANCESPECIFICATION;
+      if ("MolecularDefinition".equals(codeString))
+        return VersionIndependentResourceTypesAll.MOLECULARDEFINITION;
+      if ("ClinicalAssessment".equals(codeString))
+        return VersionIndependentResourceTypesAll.CLINICALASSESSMENT;
         throw new IllegalArgumentException("Unknown VersionIndependentResourceTypesAll code '"+codeString+"'");
         }
 
@@ -21069,12 +21252,18 @@ The primary difference between a medicationstatement and a medicationadministrat
           return new Enumeration<VersionIndependentResourceTypesAll>(this, VersionIndependentResourceTypesAll.SEQUENCE, code);
         if ("ServiceDefinition".equals(codeString))
           return new Enumeration<VersionIndependentResourceTypesAll>(this, VersionIndependentResourceTypesAll.SERVICEDEFINITION, code);
-        if ("SubstanceSpecification".equals(codeString))
-          return new Enumeration<VersionIndependentResourceTypesAll>(this, VersionIndependentResourceTypesAll.SUBSTANCESPECIFICATION, code);
+          if ("SubstanceSpecification".equals(codeString))
+            return new Enumeration<VersionIndependentResourceTypesAll>(this, VersionIndependentResourceTypesAll.SUBSTANCESPECIFICATION, code);
+          if ("MolecularDefinition".equals(codeString))
+            return new Enumeration<VersionIndependentResourceTypesAll>(this, VersionIndependentResourceTypesAll.MOLECULARDEFINITION, code);
+          if ("ClinicalAssessment".equals(codeString))
+            return new Enumeration<VersionIndependentResourceTypesAll>(this, VersionIndependentResourceTypesAll.CLINICALASSESSMENT, code);
         throw new FHIRException("Unknown VersionIndependentResourceTypesAll code '"+codeString+"'");
         }
     public String toCode(VersionIndependentResourceTypesAll code) {
-      if (code == VersionIndependentResourceTypesAll.ACCOUNT)
+       if (code == VersionIndependentResourceTypesAll.NULL)
+           return null;
+       if (code == VersionIndependentResourceTypesAll.ACCOUNT)
         return "Account";
       if (code == VersionIndependentResourceTypesAll.ACTIVITYDEFINITION)
         return "ActivityDefinition";
@@ -21480,8 +21669,10 @@ The primary difference between a medicationstatement and a medicationadministrat
         return "ServiceDefinition";
       if (code == VersionIndependentResourceTypesAll.SUBSTANCESPECIFICATION)
         return "SubstanceSpecification";
+      if (code == VersionIndependentResourceTypesAll.MOLECULARDEFINITION)
+        return "MolecularDefinition";
       return "?";
-      }
+   }
     public String toSystem(VersionIndependentResourceTypesAll code) {
       return code.getSystem();
       }

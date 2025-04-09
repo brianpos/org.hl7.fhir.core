@@ -1,8 +1,6 @@
 package org.hl7.fhir.dstu2.test;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,11 +22,13 @@ import org.hl7.fhir.dstu2.utils.SimpleWorkerContext;
 import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.exceptions.FHIRFormatError;
-import org.hl7.fhir.utilities.CSFile;
+import org.hl7.fhir.utilities.UUIDUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 
+@Deprecated
 public class ProfileUtilitiesTests {
 
   private String root;
@@ -85,11 +85,11 @@ public class ProfileUtilitiesTests {
     for (ProfileComparison outcome : comp.getComparisons()) {
       if (outcome.getSubset() != null)
         new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(
-            new FileOutputStream(Utilities.path("[tmp]", "intersection-" + outcome.getId() + ".xml")),
+            ManagedFileAccess.outStream(Utilities.path("[tmp]", "intersection-" + outcome.getId() + ".xml")),
             outcome.getSubset());
       if (outcome.getSuperset() != null)
         new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(
-            new FileOutputStream(Utilities.path("[tmp]", "union-" + outcome.getId() + ".xml")), outcome.getSuperset());
+            ManagedFileAccess.outStream(Utilities.path("[tmp]", "union-" + outcome.getId() + ".xml")), outcome.getSuperset());
 
       System.out.println("\r\n" + outcome.getId() + ": Comparison of " + outcome.getLeft().getUrl() + " and "
           + outcome.getRight().getUrl());
@@ -115,9 +115,9 @@ public class ProfileUtilitiesTests {
     System.out.println("Compare " + fn1 + " to " + fn2);
     System.out.println("  .. load");
     StructureDefinition left = (StructureDefinition) new XmlParser()
-        .parse(new FileInputStream(Utilities.path(root, fn1)));
+        .parse(ManagedFileAccess.inStream(Utilities.path(root, fn1)));
     StructureDefinition right = (StructureDefinition) new XmlParser()
-        .parse(new FileInputStream(Utilities.path(root, fn2)));
+        .parse(ManagedFileAccess.inStream(Utilities.path(root, fn2)));
     System.out.println(" .. compare");
     comp.compareProfiles(left, right);
 
@@ -161,7 +161,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
     new ProfileUtilities(context, messages, null).generateSnapshot(base, focus, focus.getUrl(), "Simple Test");
@@ -199,7 +199,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/ValueSet").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
     new ProfileUtilities(context, messages, null).generateSnapshot(base, focus, focus.getUrl(), "Simple Test");
@@ -235,7 +235,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     ElementDefinition id = focus.getDifferential().addElement();
     id.setPath("Patient.identifier");
@@ -279,7 +279,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     ElementDefinition id = focus.getDifferential().addElement();
     id.setPath("Patient.identifier");
@@ -325,7 +325,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     ElementDefinition id = focus.getDifferential().addElement();
     id.setPath("Patient.deceased[x]");
@@ -372,7 +372,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     ElementDefinition id = focus.getDifferential().addElement();
     id.setPath("Patient.deceasedDateTime");
@@ -419,7 +419,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     ElementDefinition id = focus.getDifferential().addElement();
     id.setPath("Patient.identifier");
@@ -465,7 +465,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     ElementDefinition id = focus.getDifferential().addElement();
     id.setPath("Patient.identifier");
@@ -516,7 +516,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
     ElementDefinition id = focus.getDifferential().addElement();
     id.setPath("Patient.identifier.system");
@@ -560,7 +560,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
 
     // set the slice up
@@ -649,7 +649,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
 
     // set the slice up
@@ -739,7 +739,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
 
     // set the slice up
@@ -867,7 +867,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = context
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Organization").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBase(base.getUrl());
 
     ElementDefinition id = focus.getDifferential().addElement();
@@ -918,16 +918,16 @@ public class ProfileUtilitiesTests {
 //    focus.setDifferential(null);
     String f1 = Utilities.path("c:", "temp", "base.xml");
     String f2 = Utilities.path("c:", "temp", "derived.xml");
-    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(f1), base);
+    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(f1), base);
     ;
-    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(f2), focus);
+    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(f2), focus);
     ;
     String diff = Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge", "WinMergeU.exe");
     List<String> command = new ArrayList<String>();
     command.add("\"" + diff + "\" \"" + f1 + "\" \"" + f2 + "\"");
 
     ProcessBuilder builder = new ProcessBuilder(command);
-    builder.directory(new CSFile(Utilities.path("[tmp]")));
+    builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
     builder.start();
 
   }

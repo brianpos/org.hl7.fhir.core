@@ -11,8 +11,10 @@ import org.hl7.fhir.utilities.Utilities;
 public abstract class XhtmlFluent {
 
   protected abstract XhtmlNode addTag(String string);
+  protected abstract XhtmlNode addTag(int index, String string);
   protected abstract XhtmlNode addText(String cnt);
   protected abstract void addChildren(XhtmlNodeList childNodes);
+  protected abstract int indexOfNode(XhtmlNode node);
   
   public XhtmlNode h1() {
     return addTag("h1");
@@ -49,16 +51,31 @@ public abstract class XhtmlFluent {
   public XhtmlNode h4() {
     return addTag("h4");
   }
-  
+
   public XhtmlNode table(String clss) {
+    return table(clss, false);
+  }
+  
+  public XhtmlNode table(String clss, boolean forPresentation) {
     XhtmlNode res = addTag("table");
     if (!Utilities.noString(clss))
       res.setAttribute("class", clss);
+    if (forPresentation) {
+      res.setAttribute("role", "presentation");
+    }
     return res;
   }
   
   public XhtmlNode tr() {
     return addTag("tr");
+  }
+  
+  public XhtmlNode tr(XhtmlNode tr) {
+    return addTag(indexOfNode(tr)+1, "tr");
+  }
+  
+  public XhtmlNode th(int index) {
+    return addTag(index, "th");
   }
   
   public XhtmlNode th() {
@@ -94,7 +111,11 @@ public abstract class XhtmlFluent {
   }
 
   public XhtmlNode pre(String clss) {
-    return addTag("pre").setAttribute("class", clss);
+    XhtmlNode res = addTag("pre");
+    if (clss != null) {
+      res.setAttribute("class", clss);
+    }
+    return res;
   }
 
   public void br() {
@@ -107,6 +128,10 @@ public abstract class XhtmlFluent {
 
   public XhtmlNode ul() {
     return addTag("ul");
+  }
+
+  public XhtmlNode ol() {
+    return addTag("ol");
   }
 
   public XhtmlNode li() {
@@ -182,9 +207,17 @@ public abstract class XhtmlFluent {
 
   public XhtmlNode img(String src, String alt) {
     if (alt == null) {
-      return addTag("img").attribute("src", src);
+      return addTag("img").attribute("src", src).attribute("alt", ".");
     } else {
       return addTag("img").attribute("src", src).attribute("alt", alt);
+    }
+  }
+
+  public XhtmlNode imgT(String src, String alt) {
+    if (alt == null) {
+      return addTag("img").attribute("src", src).attribute("alt", ".");
+    } else {
+      return addTag("img").attribute("src", src).attribute("alt", alt).attribute("title", alt);
     }
   }
 

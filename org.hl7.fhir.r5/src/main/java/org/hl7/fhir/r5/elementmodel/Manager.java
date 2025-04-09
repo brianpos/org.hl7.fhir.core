@@ -39,15 +39,18 @@ import java.util.List;
 import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.exceptions.FHIRFormatError;
+import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
+import org.hl7.fhir.r5.context.ContextUtilities;
 import org.hl7.fhir.r5.context.IWorkerContext;
-import org.hl7.fhir.r5.elementmodel.Manager.FhirFormat;
 import org.hl7.fhir.r5.formats.IParser.OutputStyle;
 import org.hl7.fhir.r5.model.StructureDefinition;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 
+@MarkedToMoveToAdjunctPackage
 public class Manager {
 
   //TODO use EnumMap
-  public enum FhirFormat { XML, JSON, TURTLE, TEXT, VBAR, SHC, SHL, FML; 
+  public enum FhirFormat { XML, JSON, TURTLE, TEXT, VBAR, SHC, SHL, FML, NDJSON; 
     // SHC = smart health cards, including as text versions of QR codes
     // SHL = smart health links, also a text version of the QR code
     
@@ -69,6 +72,8 @@ public class Manager {
           return "shl";
         case FML:
           return "fml";
+        case NDJSON:
+          return "ndjson";
       }
       return null;
     }
@@ -91,6 +96,8 @@ public class Manager {
           return SHL;
         case "fml":
           return FML;
+        case "ndjson":
+          return NDJSON;
       }
       return null;
     }
@@ -105,6 +112,14 @@ public class Manager {
         return FhirFormat.JSON;
       }
       return null;
+    }
+
+    public static FhirFormat fromCode(String code) {
+      FhirFormat fmt = getFhirFormat(code);
+      if (fmt == null) {
+        fmt = readFromMimeType(code);
+      } 
+      return fmt;
     }
   }
   
@@ -127,6 +142,7 @@ public class Manager {
     }
     switch (format) {
     case JSON : return new JsonParser(context);
+    case NDJSON : return new NDJsonParser(context);
     case XML : return new XmlParser(context);
     case TURTLE : return new TurtleParser(context);
     case VBAR : return new VerticalBarParser(context);
@@ -139,7 +155,11 @@ public class Manager {
   }
   
   public static Element build(IWorkerContext context, StructureDefinition sd) {
-    Property p = new Property(context, sd.getSnapshot().getElementFirstRep(), sd);
+    return build(context, sd, new ProfileUtilities(context, null, null));
+  }
+  
+  public static Element build(IWorkerContext context, StructureDefinition sd, ProfileUtilities profileUtilities) {
+    Property p = new Property(context, sd.getSnapshot().getElementFirstRep(), sd, profileUtilities, new ContextUtilities(context));
     Element e = new Element(p.getName(), p);
     e.setPath(sd.getType());
     return e;

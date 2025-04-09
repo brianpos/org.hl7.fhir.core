@@ -37,8 +37,11 @@ import java.io.OutputStreamWriter;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.r4b.context.IWorkerContext;
 import org.hl7.fhir.r4b.model.StructureDefinition;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 
+@MarkedToMoveToAdjunctPackage
 public class ConstraintJavaGenerator {
 
   private IWorkerContext context; // for doing expansions
@@ -63,8 +66,8 @@ public class ConstraintJavaGenerator {
           + "\" is not a valid Java class name");
       return null;
     }
-    File destFile = new File(Utilities.path(folder, name + ".java"));
-    OutputStreamWriter dest = new OutputStreamWriter(new FileOutputStream(destFile), "UTF-8");
+    File destFile = ManagedFileAccess.file(Utilities.path(folder, name + ".java"));
+    OutputStreamWriter dest = new OutputStreamWriter(ManagedFileAccess.outStream(destFile), "UTF-8");
 
     dest.write("package " + packageName + ";\r\n");
     dest.write("\r\n");

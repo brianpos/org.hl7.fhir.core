@@ -9,6 +9,7 @@ import org.hl7.fhir.r5.model.Enumerations.CodeSystemContentMode;
 import org.hl7.fhir.r5.model.PackageInformation;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.terminologies.CodeSystemUtilities;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.VersionUtilities;
 
 /**
@@ -19,6 +20,7 @@ import org.hl7.fhir.utilities.VersionUtilities;
  *
  */
 
+@MarkedToMoveToAdjunctPackage
 public class CanonicalResourceManager<T extends CanonicalResource> {
 
   private final String[] INVALID_TERMINOLOGY_URLS = {
@@ -46,6 +48,7 @@ public class CanonicalResourceManager<T extends CanonicalResource> {
       this.version = version;
       this.supplements = supplements;
       this.content = content;
+      this.derivation = derivation;
     }
     
     public String getType() {
@@ -537,6 +540,16 @@ public class CanonicalResourceManager<T extends CanonicalResource> {
     }
   }
   
+  public List<T> getForUrl(String url) {
+    List<T> res = new ArrayList<>();
+    List<CanonicalResourceManager<T>.CachedCanonicalResource<T>> list = listForUrl.get(url);
+    if (list != null) {
+      for (CanonicalResourceManager<T>.CachedCanonicalResource<T> t : list) {
+        res.add(t.getResource());
+      }
+    }
+    return res;
+  }
   
   /**
    * This is asking for a packaged version aware resolution
@@ -620,6 +633,9 @@ public class CanonicalResourceManager<T extends CanonicalResource> {
   }
 
   public List<T> getSupplements(T cr) {
+    if (cr == null) {
+      return new ArrayList<T>();
+    }
     if (cr.hasSourcePackage()) {
       List<String> pvl = new ArrayList<>();
       pvl.add(cr.getSourcePackage().getVID());

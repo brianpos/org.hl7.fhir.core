@@ -74,11 +74,13 @@ import org.hl7.fhir.r4b.model.StructureMap.StructureMapStructureComponent;
 import org.hl7.fhir.r4b.terminologies.TerminologyClient;
 import org.hl7.fhir.r4b.utils.validation.IResourceValidator;
 import org.hl7.fhir.r4b.utils.XVerExtensionManager;
-import org.hl7.fhir.utilities.CSFileInputStream;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.TimeTracker;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
+import org.hl7.fhir.utilities.filesystem.CSFileInputStream;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
 import org.hl7.fhir.utilities.npm.BasePackageCacheManager;
 import org.hl7.fhir.utilities.npm.NpmPackage;
@@ -95,6 +97,7 @@ import ca.uhn.fhir.parser.DataFormatException;
  * very light client to connect to an open unauthenticated terminology service
  */
 
+@MarkedToMoveToAdjunctPackage
 public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerContext, ProfileKnowledgeProvider {
 
   public static class PackageResourceLoader extends CanonicalResourceProxy {
@@ -111,7 +114,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
     @Override
     public CanonicalResource loadResource() {
       try {
-        FileInputStream f = new FileInputStream(filename);
+        FileInputStream f = ManagedFileAccess.inStream(filename);
         try {
           if (loader != null) {
             return (CanonicalResource) loader.loadResource(f, true);
@@ -484,7 +487,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
       }
     }
     for (String s : pi.list("other")) {
-      binaries.put(s, TextFile.streamToBytes(pi.load("other", s)));
+      binaries.put(s, FileUtilities.streamToBytes(pi.load("other", s)));
     }
     if (version == null) {
       version = pi.version();
@@ -682,8 +685,8 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
   }
 
   public void loadBinariesFromFolder(String folder) throws FileNotFoundException, Exception {
-    for (String n : new File(folder).list()) {
-      loadBytes(n, new FileInputStream(Utilities.path(folder, n)));
+    for (String n : ManagedFileAccess.file(folder).list()) {
+      loadBytes(n, ManagedFileAccess.inStream(Utilities.path(folder, n)));
     }
   }
 
@@ -694,7 +697,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
   }
 
   public void loadFromFolder(String folder) throws FileNotFoundException, Exception {
-    for (String n : new File(folder).list()) {
+    for (String n : ManagedFileAccess.file(folder).list()) {
       if (n.endsWith(".json"))
         loadFromFile(Utilities.path(folder, n), new JsonParser());
       else if (n.endsWith(".xml"))
@@ -705,7 +708,7 @@ public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerCon
   private void loadFromFile(String filename, IParser p) throws FileNotFoundException, Exception {
     Resource r;
     try {
-      r = p.parse(new FileInputStream(filename));
+      r = p.parse(ManagedFileAccess.inStream(filename));
       if (r.getResourceType() == ResourceType.Bundle) {
         for (BundleEntryComponent e : ((Bundle) r).getEntry()) {
           cacheResource(e.getResource());

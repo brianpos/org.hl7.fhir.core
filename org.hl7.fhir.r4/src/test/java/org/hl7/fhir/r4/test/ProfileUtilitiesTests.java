@@ -1,7 +1,6 @@
 package org.hl7.fhir.r4.test;
 
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +16,9 @@ import org.hl7.fhir.r4.model.StructureDefinition;
 import org.hl7.fhir.r4.model.StructureDefinition.TypeDerivationRule;
 import org.hl7.fhir.r4.test.utils.TestingUtilities;
 import org.hl7.fhir.r4.utils.EOperationOutcome;
-import org.hl7.fhir.utilities.CSFile;
+import org.hl7.fhir.utilities.UUIDUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition focus = new StructureDefinition();
     StructureDefinition base = TestingUtilities.context()
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/Patient").copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setBaseDefinition(base.getUrl());
     focus.setType("Patient");
     focus.setDerivation(TypeDerivationRule.CONSTRAINT);
@@ -84,7 +84,7 @@ public class ProfileUtilitiesTests {
     StructureDefinition base = TestingUtilities.context()
         .fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/ValueSet").copy();
     StructureDefinition focus = base.copy();
-    focus.setUrl(Utilities.makeUuidUrn());
+    focus.setUrl(UUIDUtilities.makeUuidUrn());
     focus.setSnapshot(null);
     focus.setDifferential(null);
     List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
@@ -797,16 +797,16 @@ public class ProfileUtilitiesTests {
 //    focus.setDifferential(null);
     String f1 = Utilities.path("c:", "temp", "base.xml");
     String f2 = Utilities.path("c:", "temp", "derived.xml");
-    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(f1), base);
+    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(f1), base);
     ;
-    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(f2), focus);
+    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(f2), focus);
     ;
     String diff = Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge", "WinMergeU.exe");
     List<String> command = new ArrayList<String>();
     command.add("\"" + diff + "\" \"" + f1 + "\" \"" + f2 + "\"");
 
     ProcessBuilder builder = new ProcessBuilder(command);
-    builder.directory(new CSFile(Utilities.path("[tmp]")));
+    builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
     builder.start();
   }
 

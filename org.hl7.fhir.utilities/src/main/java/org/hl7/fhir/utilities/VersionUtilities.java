@@ -2,6 +2,7 @@ package org.hl7.fhir.utilities;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 
@@ -77,6 +78,8 @@ public class VersionUtilities {
     private int compareString(String s1, String s2) {
       if (s1 == null) {
         return s2 == null ? 0 : 1;
+      } else if (s2 == null) {
+        return -1;
       } else {
         return s1.compareTo(s2);
       }
@@ -86,6 +89,8 @@ public class VersionUtilities {
     private int compareInteger(String s1, String s2) {
       if (s1 == null) {
         return s2 == null ? 0 : 1;
+      } else if (s2 == null) {
+        return -1;
       } else {
         return Integer.compare(Integer.parseInt(s1), Integer.parseInt(s2));
       }
@@ -284,8 +289,15 @@ public class VersionUtilities {
   }
 
   public static String getMajMin(String version) {
-    if (version == null)
+    if (version == null) {
       return null;
+    }
+    if (version.startsWith("http://hl7.org/fhir/")) {
+      version = version.substring(20);
+      if (version.contains("/")) {
+        version = version.substring(0, version.indexOf("/"));
+      }
+    }
     
     if (Utilities.charCount(version, '.') == 1) {
       String[] p = version.split("\\.");
@@ -293,8 +305,8 @@ public class VersionUtilities {
     } else if (Utilities.charCount(version, '.') == 2) {
       String[] p = version.split("\\.");
       return p[0]+"."+p[1];
-    } else if (Utilities.existsInList(version, "R2", "R2B", "R3", "R4", "R4B", "R5", "R6")) {
-      switch (version) {
+    } else if (Utilities.existsInList(version.toUpperCase(), "R2", "R2B", "R3", "R4", "R4B", "R5", "R6")) {
+      switch (version.toUpperCase()) {
       case "R2": return "1.0";
       case "R2B": return "1.4";
       case "R3": return "3.0";
@@ -321,7 +333,7 @@ public class VersionUtilities {
     if (Utilities.noString(version)) {
       return false;
     }
-    return version.matches("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-\\+]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-\\+][0-9a-zA-Z-\\+]*))*))?$");
+    return version.matches("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-\\+]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-\\+][0-9a-zA-Z-\\+]*))*))?)?$");
   }
 
   /** 
@@ -643,6 +655,15 @@ public class VersionUtilities {
     String mm2 = getMajMin(v2);
     return mm1 != null && mm2 != null && mm1.equals(mm2);
   }
+  
+  public static boolean versionsMatch(String v1, List<String> v2l) {
+    for (String v2 : v2l) {
+      if (versionsMatch(v1, v2)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   public static boolean isR5VerOrLater(String version) {
     if (version == null) {
@@ -683,8 +704,9 @@ public class VersionUtilities {
     }
     
     switch (getMajMin(v)) {
-    case "1.0" : return "http://hl7.org/fhir/DSTU1";
-    case "1.4" : return "http://hl7.org/fhir/DSTU2";
+    case "0.0" : return "http://hl7.org/fhir/DSTU1";
+    case "1.0" : return "http://hl7.org/fhir/DSTU2";
+    case "1.4" : return "http://hl7.org/fhir/2016May";
     case "3.0" : return "http://hl7.org/fhir/STU3";
     case "4.0" : return "http://hl7.org/fhir/R4";
     case "4.3" : return "http://hl7.org/fhir/R4B";
@@ -696,7 +718,11 @@ public class VersionUtilities {
   }
 
   public static String getNameForVersion(String v) {
-    switch (getMajMin(v)) {
+    String mm = getMajMin(v);
+    if (mm == null) {
+      throw new Error("Unable to determine version for '"+v+"'");
+    }
+    switch (mm) {
     case "1.0" : return "R2";
     case "1.4" : return "R2B";
     case "3.0" : return "R3";
@@ -737,6 +763,10 @@ public class VersionUtilities {
       return true;
     }
     return startVer.compareTo(ver) < 0 && stopVer.compareTo(ver) > 0;
+  }
+
+  public static String getNoPatch(String version) {
+    return version.contains("-") ? version.substring(0, version.indexOf("-")) : version;
   }
 
 

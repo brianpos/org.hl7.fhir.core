@@ -19,12 +19,14 @@ import org.hl7.fhir.dstu2016may.model.StructureMap;
 import org.hl7.fhir.dstu2016may.utils.SimpleWorkerContext;
 import org.hl7.fhir.dstu2016may.utils.StructureMapUtilities;
 import org.hl7.fhir.exceptions.FHIRException;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 @Disabled
+@Deprecated
 public class StructureMapTests {
 
   private void testParse(String path) throws FileNotFoundException, IOException, FHIRException {
@@ -32,8 +34,8 @@ public class StructureMapTests {
       TestingUtilities.context = SimpleWorkerContext
           .fromPack("C:\\work\\org.hl7.fhir.2016May\\build\\publish\\validation-min.xml.zip");
     StructureMapUtilities scm = new StructureMapUtilities(TestingUtilities.context, null, null);
-    StructureMap map = scm.parse(TextFile.fileToString(Utilities.path("C:\\work\\org.hl7.fhir.2016May\\build", path)));
-    TextFile.stringToFile(scm.render(map), Utilities.path("C:\\work\\org.hl7.fhir.2016May\\build", path + ".out"));
+    StructureMap map = scm.parse(FileUtilities.fileToString(Utilities.path("C:\\work\\org.hl7.fhir.2016May\\build", path)));
+    FileUtilities.stringToFile(scm.render(map), Utilities.path("C:\\work\\org.hl7.fhir.2016May\\build", path + ".out"));
   }
 
   @Test
@@ -86,35 +88,35 @@ public class StructureMapTests {
 
     StructureMapUtilities scu = new StructureMapUtilities(TestingUtilities.context, maps, null);
 
-    for (String f : new File("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA").list()) {
+    for (String f : ManagedFileAccess.file("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA").list()) {
       try {
         StructureDefinition sd = (StructureDefinition) new XmlParser()
-            .parse(new FileInputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA\\" + f));
+            .parse(ManagedFileAccess.inStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA\\" + f));
         ((SimpleWorkerContext) TestingUtilities.context).seeResource(sd.getUrl(), sd);
       } catch (Exception e) {
       }
     }
 
-    for (String f : new File("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\maps").list()) {
+    for (String f : ManagedFileAccess.file("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\maps").list()) {
       try {
-        StructureMap map = scu.parse(TextFile.fileToString("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\maps\\" + f));
+        StructureMap map = scu.parse(FileUtilities.fileToString("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\maps\\" + f));
         maps.put(map.getUrl(), map);
       } catch (Exception e) {
       }
     }
 
     Element cda = Manager.parse(TestingUtilities.context,
-        new FileInputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\Example\\ccd.xml"), FhirFormat.XML);
+        ManagedFileAccess.inStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\Example\\ccd.xml"), FhirFormat.XML);
     Manager.compose(TestingUtilities.context, cda,
-        new FileOutputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\Example\\ccd.out.json"), FhirFormat.JSON,
+        ManagedFileAccess.outStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\Example\\ccd.out.json"), FhirFormat.JSON,
         OutputStyle.PRETTY, null);
     Manager.compose(TestingUtilities.context, cda,
-        new FileOutputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\Example\\ccd.out.xml"), FhirFormat.XML,
+        ManagedFileAccess.outStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\Example\\ccd.out.xml"), FhirFormat.XML,
         OutputStyle.PRETTY, null);
     Bundle bundle = new Bundle();
     scu.transform(null, cda, maps.get("http://hl7.org/fhir/StructureMap/cda"), bundle);
     new XmlParser().setOutputStyle(OutputStyle.PRETTY)
-        .compose(new FileOutputStream(Utilities.path("[tmp]", "bundle.xml")), bundle);
+        .compose(ManagedFileAccess.outStream(Utilities.path("[tmp]", "bundle.xml")), bundle);
   }
 
 }

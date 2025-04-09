@@ -36,6 +36,7 @@ import java.util.Date;
 import java.util.List;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.r5.model.Enumerations.*;
+import org.hl7.fhir.r5.model.ValueSet.ValueSetExpansionContainsComponent;
 import org.hl7.fhir.instance.model.api.IBaseDatatypeElement;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.instance.model.api.ICompositeType;
@@ -562,9 +563,28 @@ public class Coding extends DataType implements IBaseCoding, ICompositeType, ICo
         base = base + "#"+getCode();
         if (hasDisplay())
           base = base+": '"+getDisplay()+"'";
-        return base;
-        
+        return base;        
       } 
+      
+      public static Coding fromLiteral(String value) {
+        String sv = value.contains("#") ? value.substring(0, value.indexOf("#")) : value; 
+        String cp = value.contains("#") ? value.substring(value.indexOf("#")+1) : null;
+        
+        String system = sv.contains("|") ? sv.substring(0, sv.indexOf("|")) : sv;
+        String version = sv.contains("|") ? sv.substring(sv.indexOf("|")+1) : null;
+        
+        String code = cp != null && cp.contains("'") ? cp.substring(0, cp.indexOf("'")) : cp;
+        String display = cp != null && cp.contains("'") ? cp.substring(cp.indexOf("'")+1) : null;
+        if (display != null) {
+          display = display.trim();
+          display = display.substring(0, display.length() -1);
+        }
+        if ((system == null || !Utilities.isAbsoluteUrl(system)) && code == null) {
+          return null;
+        } else {
+          return new Coding(system, version, code, display);
+        }
+      }
 
       public boolean matches(Coding other) {
         return other.hasCode() && this.hasCode() && other.hasSystem() && this.hasSystem() && this.getCode().equals(other.getCode()) && this.getSystem().equals(other.getSystem()) ;
@@ -628,6 +648,18 @@ public class Coding extends DataType implements IBaseCoding, ICompositeType, ICo
         setDisplay(theDisplay);
       }      
 // end addition
+
+      public Coding(ValueSetExpansionContainsComponent cc) {
+        super();
+        setSystem(cc.getSystem());
+        setVersion(cc.getVersion());
+        setCode(cc.getCode());
+        setDisplay(cc.getDisplay());
+      }
+
+      public String getVersionedSystem() {
+        return hasVersion() ? getSystem()+"|"+getVersion() : getSystem();
+      }
 
 }
 

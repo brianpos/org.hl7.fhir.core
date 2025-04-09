@@ -100,9 +100,11 @@ import org.hl7.fhir.r4.utils.formats.CSVWriter;
 import org.hl7.fhir.r4.utils.formats.XLSXWriter;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
 import org.hl7.fhir.utilities.FhirPublication;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.TerminologyServiceOptions;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
+import org.hl7.fhir.utilities.i18n.RenderingI18nContext;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.utilities.validation.ValidationMessage.Source;
 import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator;
@@ -136,6 +138,7 @@ import org.hl7.fhir.utilities.xml.SchematronWriter.Section;
  * @author Grahame
  *
  */
+@MarkedToMoveToAdjunctPackage
 public class ProfileUtilities extends TranslatingUtilities {
 
   public class ElementRedirection {
@@ -280,6 +283,8 @@ public class ProfileUtilities extends TranslatingUtilities {
       public String display;
       public String url;
     }
+
+    public boolean isPrimitiveType(String typeSimple);
 
     public boolean isDatatype(String typeSimple);
 
@@ -794,7 +799,6 @@ public class ProfileUtilities extends TranslatingUtilities {
           if (diffMatches.get(0).hasSliceName())
             outcome.setSliceName(diffMatches.get(0).getSliceName());
           updateFromDefinition(outcome, diffMatches.get(0), profileName, trimDifferential, url, srcSD);
-          removeStatusExtensions(outcome);
 //          if (outcome.getPath().endsWith("[x]") && outcome.getType().size() == 1 && !outcome.getType().get(0).getCode().equals("*") && !diffMatches.get(0).hasSlicing()) // if the base profile allows multiple types, but the profile only allows one, rename it
 //            outcome.setPath(outcome.getPath().substring(0, outcome.getPath().length()-3)+Utilities.capitalize(outcome.getType().get(0).getCode()));
           outcome.setSlicing(null);
@@ -1046,7 +1050,6 @@ public class ProfileUtilities extends TranslatingUtilities {
             // Else we'll treat it as the base definition of the slice.
             if (!diffMatches.get(0).hasSliceName()) {
               updateFromDefinition(outcome, diffMatches.get(0), profileName, trimDifferential, url, srcSD);
-              removeStatusExtensions(outcome);
               if (!outcome.hasContentReference() && !outcome.hasType()) {
                 throw new DefinitionException("not done yet");
               }
@@ -1136,7 +1139,6 @@ public class ProfileUtilities extends TranslatingUtilities {
                                                                                                 // we don't want to
                                                                                                 // update the unsliced
                                                                                                 // description
-            removeStatusExtensions(outcome);
           } else if (!diffMatches.get(0).hasSliceName())
             diffMatches.get(0).setUserData(GENERATED_IN_SNAPSHOT, outcome); // because of updateFromDefinition isn't
                                                                             // called
@@ -1236,7 +1238,6 @@ public class ProfileUtilities extends TranslatingUtilities {
                 throw new DefinitionException("Adding wrong path");
               result.getElement().add(outcome);
               updateFromDefinition(outcome, diffItem, profileName, trimDifferential, url, srcSD);
-              removeStatusExtensions(outcome);
               // --- LM Added this
               diffCursor = differential.getElement().indexOf(diffItem) + 1;
               if (!outcome.getType().isEmpty()
@@ -1327,13 +1328,6 @@ public class ProfileUtilities extends TranslatingUtilities {
         throw new Error("null min");
     }
     return res;
-  }
-
-  private void removeStatusExtensions(ElementDefinition outcome) {
-    outcome.removeExtension(ToolingExtensions.EXT_FMM_LEVEL);
-    outcome.removeExtension(ToolingExtensions.EXT_STANDARDS_STATUS);
-    outcome.removeExtension(ToolingExtensions.EXT_NORMATIVE_VERSION);
-    outcome.removeExtension(ToolingExtensions.EXT_WORKGROUP);
   }
 
   private String descED(List<ElementDefinition> list, int index) {
@@ -2386,8 +2380,7 @@ public class ProfileUtilities extends TranslatingUtilities {
   public XhtmlNode generateExtensionTable(String defFile, StructureDefinition ed, String imageFolder,
       boolean inlineGraphics, boolean full, String corePath, String imagePath, Set<String> outputTracker)
       throws IOException, FHIRException {
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, inlineGraphics, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, inlineGraphics, true);
     TableModel model = gen.initNormalTable(corePath, false, true, ed.getId(), false, TableGenerationMode.XML);
 
     boolean deep = false;
@@ -2792,8 +2785,7 @@ public class ProfileUtilities extends TranslatingUtilities {
       boolean inlineGraphics, String profileBaseFileName, boolean snapshot, String corePath, String imagePath,
       boolean logicalModel, boolean allInvariants, Set<String> outputTracker) throws IOException, FHIRException {
     assert (diff != snapshot);// check it's ok to get rid of one of these
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, inlineGraphics, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, inlineGraphics, true);
     TableModel model = gen.initNormalTable(corePath, false, true, profile.getId() + (diff ? "d" : "s"), false,
         TableGenerationMode.XML);
     List<ElementDefinition> list = diff ? profile.getDifferential().getElement() : profile.getSnapshot().getElement();
@@ -2817,8 +2809,7 @@ public class ProfileUtilities extends TranslatingUtilities {
   public XhtmlNode generateGrid(String defFile, StructureDefinition profile, String imageFolder, boolean inlineGraphics,
       String profileBaseFileName, String corePath, String imagePath, Set<String> outputTracker)
       throws IOException, FHIRException {
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, inlineGraphics, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, inlineGraphics, true);
     TableModel model = gen.initGridTable(corePath, profile.getId());
     List<ElementDefinition> list = profile.getSnapshot().getElement();
     List<StructureDefinition> profiles = new ArrayList<StructureDefinition>();
@@ -4969,8 +4960,7 @@ public class ProfileUtilities extends TranslatingUtilities {
 
   public XhtmlNode generateSpanningTable(StructureDefinition profile, String imageFolder, boolean onlyConstraints,
       String constraintPrefix, Set<String> outputTracker) throws IOException, FHIRException {
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, false, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, false, true);
     TableModel model = initSpanningTable(gen, "", false, profile.getId());
     Set<String> processed = new HashSet<String>();
     SpanEntry span = buildSpanningTable("(focus)", "", profile, processed, onlyConstraints, constraintPrefix);

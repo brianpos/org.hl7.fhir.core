@@ -3,26 +3,23 @@ package org.hl7.fhir.convertors.analytics;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.r5.utils.EOperationOutcome;
-import org.hl7.fhir.utilities.SimpleHTTPClient;
-import org.hl7.fhir.utilities.SimpleHTTPClient.HTTPResult;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
+import org.hl7.fhir.utilities.http.HTTPResult;
+import org.hl7.fhir.utilities.http.ManagedWebAccess;
 import org.hl7.fhir.utilities.json.model.JsonArray;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.json.parser.JsonParser;
 import org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager;
 import org.hl7.fhir.utilities.npm.NpmPackage;
+import org.hl7.fhir.utilities.npm.NpmPackage.PackagedResourceFile;
 import org.hl7.fhir.utilities.npm.PackageClient;
 import org.hl7.fhir.utilities.npm.PackageInfo;
 import org.hl7.fhir.utilities.npm.PackageServer;
@@ -72,7 +69,7 @@ public class PackageVisitor {
     public void alreadyVisited(String pid) throws FHIRException, IOException, EOperationOutcome;
   }
 
-  private List<String> resourceTypes = new ArrayList<>();
+  private Set<String> resourceTypes = new HashSet<>();
   private List<String> versions = new ArrayList<>();
   private boolean corePackages;
   private boolean oldVersions;
@@ -83,12 +80,19 @@ public class PackageVisitor {
   private String cache;  
   private int step;
 
-  public List<String> getResourceTypes() {
+  public Set<String> getResourceTypes() {
     return resourceTypes;
   }
 
-  public void setResourceTypes(List<String> resourceTypes) {
+  public void setResourceTypes(Set<String> resourceTypes) {
     this.resourceTypes = resourceTypes;
+  }
+
+  public void setResourceTypes(String... resourceTypes) {
+    this.resourceTypes = new HashSet<String>();
+    for (String s : resourceTypes) {
+      this.resourceTypes.add(s);
+    }
   }
 
   public List<String> getVersions() {
@@ -199,7 +203,7 @@ public class PackageVisitor {
     }
 
     if (step == 0 || step == 3) {
-      JsonObject json = JsonParser.parseObjectFromUrl("https://raw.githubusercontent.com/FHIR/ig-registry/master/fhir-ig-list.json");
+      JsonObject json = JsonParser.parseObjectFromUrl("https://fhir.github.io/ig-registry/fhir-ig-list.json");
       i = 0;
       List<JsonObject> objects = json.getJsonObjects("guides");
       for (JsonObject o : objects) {
@@ -230,14 +234,14 @@ public class PackageVisitor {
         String[] p = url.split("\\/");
         String repo = "https://build.fhir.org/ig/"+p[0]+"/"+p[1];
         JsonObject manifest = JsonParser.parseObjectFromUrl(repo+"/package.manifest.json");
-        File co = new File(Utilities.path(cache, pid+"."+manifest.asString("date")+".tgz"));
+        File co = ManagedFileAccess.file(Utilities.path(cache, pid+"."+manifest.asString("date")+".tgz"));
         if (!co.exists()) {
-          SimpleHTTPClient fetcher = new SimpleHTTPClient();
-          HTTPResult res = fetcher.get(repo+"/package.tgz?nocache=" + System.currentTimeMillis());
+
+          HTTPResult res = ManagedWebAccess.get(Arrays.asList("web"), repo+"/package.tgz?nocache=" + System.currentTimeMillis());
           res.checkThrowException();
-          TextFile.bytesToFile(res.getContent(), co);
+          FileUtilities.bytesToFile(res.getContent(), co);
         }
-        NpmPackage npm = NpmPackage.fromPackage(new FileInputStream(co));          
+        NpmPackage npm = NpmPackage.fromPackage(ManagedFileAccess.inStream(co));          
         String fv = npm.fhirVersion();
         long ms2 = System.currentTimeMillis();
 
@@ -259,7 +263,7 @@ public class PackageVisitor {
                 for (String s : npm.listResources(type)) {
                   c++;
                   try {
-                    processor.processResource(ctxt, context, type, s, TextFile.streamToBytes(npm.load("package", s)));
+                    processor.processResource(ctxt, context, type, s, FileUtilities.streamToBytes(npm.load("package", s)));
                   } catch (Exception e) {
                     System.out.println("####### Error loading "+pid+"#current["+fv+"]/"+type+" ####### "+e.getMessage());
                     //                e.printStackTrace();
@@ -314,11 +318,11 @@ public class PackageVisitor {
     for (PackageInfo i : pc.search(null, null, null, false)) {
       list.add(i.getId());
     }    
-    JsonObject json = JsonParser.parseObjectFromUrl("https://raw.githubusercontent.com/FHIR/ig-registry/master/fhir-ig-list.json");
+    JsonObject json = JsonParser.parseObjectFromUrl("https://fhir.github.io/ig-registry/fhir-ig-list.json");
     for (JsonObject ig : json.getJsonObjects("guides")) {
       list.add(ig.asString("npm-name"));
     }
-    json = JsonParser.parseObjectFromUrl("https://raw.githubusercontent.com/FHIR/ig-registry/master/package-feeds.json");
+    json = JsonParser.parseObjectFromUrl("https://fhir.github.io/ig-registry/package-feeds.json");
     for (JsonObject feed : json.getJsonObjects("feeds")) {
       processFeed(list, feed.asString("url"));
     }
@@ -329,8 +333,8 @@ public class PackageVisitor {
   private void processFeed(Set<String> list, String str) throws IOException, ParserConfigurationException, SAXException {
     System.out.println("Feed "+str);
     try {
-      SimpleHTTPClient fetcher = new SimpleHTTPClient();
-      HTTPResult res = fetcher.get(str+"?nocache=" + System.currentTimeMillis());
+
+      HTTPResult res = ManagedWebAccess.get(Arrays.asList("web"), str+"?nocache=" + System.currentTimeMillis());
       res.checkThrowException();
       Document xml = XMLUtil.parseToDom(res.getContent());
       for (Element channel : XMLUtil.getNamedChildren(xml.getDocumentElement(), "channel")) {
@@ -354,6 +358,7 @@ public class PackageVisitor {
       npm = pcm.loadPackage(pid, v);
     } catch (Throwable e) {
       System.out.println("Unable to load package: "+pid+"#"+v+": "+e.getMessage());
+      return;
     }
 
     try {
@@ -375,15 +380,13 @@ public class PackageVisitor {
       if (ok) {
         int c = 0;
         if (fv != null && (versions.isEmpty() || versions.contains(fv))) {
-          for (String type : resourceTypes) {
-            for (String s : npm.listResources(type)) {
-              c++;
-              try {
-                processor.processResource(ctxt, context, type, s, TextFile.streamToBytes(npm.load("package", s)));
-              } catch (Exception e) {
-                System.out.println("####### Error loading "+pid+"#"+v +"["+fv+"]/"+type+" ####### "+e.getMessage());
-                e.printStackTrace();
-              }
+          for (PackagedResourceFile p : npm.listAllResources(resourceTypes)) {
+            c++;
+            try {
+              processor.processResource(ctxt, context, p.getResourceType(), p.getFilename(), FileUtilities.streamToBytes(npm.load(p.getFolder(), p.getFilename())));
+            } catch (Exception e) {
+              System.out.println("####### Error loading "+pid+"#"+v +"["+fv+"]/"+p.getResourceType()+" ####### "+e.getMessage());
+              e.printStackTrace();
             }
           }
         }    

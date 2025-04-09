@@ -39,14 +39,17 @@ import java.util.List;
 import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.exceptions.FHIRFormatError;
+import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
 import org.hl7.fhir.r5.context.ContextUtilities;
 import org.hl7.fhir.r5.context.IWorkerContext;
+import org.hl7.fhir.r5.fhirpath.FHIRPathEngine;
 import org.hl7.fhir.r5.formats.FormatUtilities;
 import org.hl7.fhir.r5.formats.IParser.OutputStyle;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionKind;
 import org.hl7.fhir.r5.model.StructureDefinition.TypeDerivationRule;
 import org.hl7.fhir.r5.utils.ToolingExtensions;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
 import org.hl7.fhir.utilities.validation.IDigitalSignatureServices;
@@ -55,6 +58,7 @@ import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueType;
 import org.hl7.fhir.utilities.validation.ValidationMessage.Source;
 
+@MarkedToMoveToAdjunctPackage
 public abstract class ParserBase {
 
   public enum IdRenderingPolicy {
@@ -89,14 +93,26 @@ public abstract class ParserBase {
   protected IdRenderingPolicy idPolicy = IdRenderingPolicy.All;
   protected StructureDefinition logical;
   protected IDigitalSignatureServices signatureServices;
-  
-	public ParserBase(IWorkerContext context) {
+  private ProfileUtilities profileUtilities;
+  private ContextUtilities contextUtilities;
+
+	public ParserBase(IWorkerContext context, ProfileUtilities utilities) {
 		super();
 		this.context = context;
+    this.profileUtilities = utilities;
+    contextUtilities = new ContextUtilities(context);
 		policy = ValidationPolicy.NONE;
 	}
 
-	public void setupValidation(ValidationPolicy policy) {
+	public ParserBase(IWorkerContext context) {
+	  super();
+    this.context = context;
+    this.profileUtilities = new ProfileUtilities(context, null, null, new FHIRPathEngine(context));
+    contextUtilities = new ContextUtilities(context);
+    policy = ValidationPolicy.NONE;
+  }
+
+  public void setupValidation(ValidationPolicy policy) {
 	  this.policy = policy;
 	}
 
@@ -203,7 +219,7 @@ public abstract class ParserBase {
     return expectedName != null && expectedName.equals(name);
   }
 
-  private String urlTail(String type) {
+  protected String urlTail(String type) {
     return type == null || !type.contains("/") ? type : type.substring(type.lastIndexOf("/")+1);
   }
 
@@ -215,19 +231,19 @@ public abstract class ParserBase {
     // first pass: only look at base definitions
 	  for (StructureDefinition sd : context.fetchResourcesByType(StructureDefinition.class)) {
 	    if (sd.getUrl().equals("http://hl7.org/fhir/StructureDefinition/"+name)) {
-	      new ContextUtilities(context).generateSnapshot(sd); 
+	      contextUtilities.generateSnapshot(sd); 
 	      return sd;
 	    }
 	  }
     for (StructureDefinition sd : context.fetchResourcesByType(StructureDefinition.class)) {
       if (name.equals(sd.getTypeName()) && sd.getDerivation() == TypeDerivationRule.SPECIALIZATION) {
-        new ContextUtilities(context).generateSnapshot(sd); 
+        contextUtilities.generateSnapshot(sd); 
         return sd;
       }
     }
     for (StructureDefinition sd : context.fetchResourcesByType(StructureDefinition.class)) {
       if (name.equals(sd.getUrl()) && sd.getDerivation() == TypeDerivationRule.SPECIALIZATION) {
-        new ContextUtilities(context).generateSnapshot(sd); 
+        contextUtilities.generateSnapshot(sd); 
         return sd;
       }
     }
@@ -304,4 +320,22 @@ public abstract class ParserBase {
       return element.getNamedChildValue("reference");
     }
   }
+
+  public IWorkerContext getContext() {
+    return context;
+  }
+
+  public ValidationPolicy getPolicy() {
+    return policy;
+  }
+
+  public ProfileUtilities getProfileUtilities() {
+    return profileUtilities;
+  }
+
+  public ContextUtilities getContextUtilities() {
+    return contextUtilities;
+  }
+  
+  
 }

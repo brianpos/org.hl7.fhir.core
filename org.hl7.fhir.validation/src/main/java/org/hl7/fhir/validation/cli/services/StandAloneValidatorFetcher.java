@@ -1,47 +1,63 @@
 package org.hl7.fhir.validation.cli.services;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+
+import javax.annotation.Nonnull;
 
 import org.hl7.fhir.convertors.txClient.TerminologyClientFactory;
+import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRException;
+import org.hl7.fhir.exceptions.FHIRFormatError;
 import org.hl7.fhir.r5.context.IWorkerContext;
 import org.hl7.fhir.r5.context.IWorkerContextManager;
 import org.hl7.fhir.r5.elementmodel.Element;
+import org.hl7.fhir.r5.elementmodel.Element.SpecialElement;
+import org.hl7.fhir.r5.elementmodel.Manager;
+import org.hl7.fhir.r5.elementmodel.Manager.FhirFormat;
 import org.hl7.fhir.r5.model.CanonicalResource;
+import org.hl7.fhir.r5.model.CanonicalType;
 import org.hl7.fhir.r5.model.ElementDefinition;
 import org.hl7.fhir.r5.model.Resource;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.model.ValueSet;
 import org.hl7.fhir.r5.terminologies.client.ITerminologyClient;
+import org.hl7.fhir.r5.utils.validation.IMessagingServices;
 import org.hl7.fhir.r5.utils.validation.IResourceValidator;
 import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor;
 import org.hl7.fhir.r5.utils.validation.IValidatorResourceFetcher;
-import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor.AdditionalBindingPurpose;
-import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor.CodedContentValidationAction;
-import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor.ElementValidationAction;
-import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor.ResourceValidationAction;
+import org.hl7.fhir.r5.utils.validation.IValidationPolicyAdvisor.ReferenceDestinationType;
 import org.hl7.fhir.r5.utils.validation.constants.BindingKind;
-import org.hl7.fhir.r5.utils.validation.constants.CodedContentValidationPolicy;
 import org.hl7.fhir.r5.utils.validation.constants.ContainedReferenceValidationPolicy;
 import org.hl7.fhir.r5.utils.validation.constants.ReferenceValidationPolicy;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
 import org.hl7.fhir.utilities.VersionUtilities.VersionURLInfo;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
+import org.hl7.fhir.utilities.http.HTTPResult;
+import org.hl7.fhir.utilities.http.ManagedWebAccess;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.json.parser.JsonParser;
 import org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager;
 import org.hl7.fhir.utilities.npm.NpmPackage;
+import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.validation.cli.utils.Common;
-
-import javax.annotation.Nonnull;
+import org.hl7.fhir.validation.instance.advisor.BasePolicyAdvisorForFullValidation;
 
 
 public class StandAloneValidatorFetcher implements IValidatorResourceFetcher, IValidationPolicyAdvisor, IWorkerContextManager.ICanonicalResourceLocator {
@@ -53,54 +69,124 @@ public class StandAloneValidatorFetcher implements IValidatorResourceFetcher, IV
   private Map<String, Boolean> urlList = new HashMap<>();
   private Map<String, String> pidList = new HashMap<>();
   private Map<String, NpmPackage> pidMap = new HashMap<>();
-
+  private IValidationPolicyAdvisor policyAdvisor;
+  private String resolutionContext;
+  private Map<String, String> knownFiles = new HashMap<>();
+  
+  
   public StandAloneValidatorFetcher(FilesystemPackageCacheManager pcm, IWorkerContext context, IPackageInstaller installer) {
-    super();
     this.pcm = pcm;
     this.context = context;
     this.installer = installer;
+    this.policyAdvisor = new BasePolicyAdvisorForFullValidation(ReferenceValidationPolicy.IGNORE);
   }
 
   @Override
-  public Element fetch(IResourceValidator validator, Object appContext, String url) throws FHIRException {
-    throw new FHIRException("The URL '" + url + "' is not known to the FHIR validator, and has not been provided as part of the setup / parameters");
+  public Element fetch(IResourceValidator validator, Object appContext, String url) throws FHIRException, IOException {
+    if (!Utilities.isAbsoluteUrl(url) && Utilities.startsWithInList(resolutionContext, "http:", "https:")) {
+      url = Utilities.pathURL(resolutionContext, url);
+    }
+    
+    if (Utilities.isAbsoluteUrl(url)) {
+      HTTPResult cnt = null; 
+      try {
+        cnt = ManagedWebAccess.get(Arrays.asList("web"), url, "application/json");
+        cnt.checkThrowException();
+        
+      } catch (Exception e) {
+        cnt = ManagedWebAccess.get(Arrays.asList("web"), url, "application/fhir+xml");
+        cnt.checkThrowException();        
+      }
+      if (cnt.getContentType() != null && cnt.getContentType().contains("xml")) {
+        return Manager.parse(context, new ByteArrayInputStream(cnt.getContent()), FhirFormat.XML).get(0).getElement();
+      } else {
+        return Manager.parse(context, new ByteArrayInputStream(cnt.getContent()), FhirFormat.JSON).get(0).getElement();
+      }
+    } else if (resolutionContext == null) {
+      throw new FHIRException("The URL '" + url + "' is not known to the FHIR validator, and a resolution context has not been provided as part of the setup / parameters");
+    } else if (resolutionContext.startsWith("file:")) {
+      File rc = ManagedFileAccess.file(resolutionContext.substring(5));
+      if (!rc.exists()) {
+        throw new FHIRException("The URL '" + url + "' is not known to the FHIR validator, and a resolution context has not been provided as part of the setup / parameters");        
+      }
+      // first we look for the file by several different patterns
+      File tgt = ManagedFileAccess.file(rc, url);
+      if (tgt.exists()) {
+        return see(tgt, loadFile(tgt));
+      }
+      tgt = ManagedFileAccess.file(rc, url+".json");
+      if (tgt.exists()) {
+        return see(tgt, loadFile(tgt));
+      }
+      tgt = ManagedFileAccess.file(rc, url+".xml");
+      if (tgt.exists()) {
+        return see(tgt, loadFile(tgt));
+      }
+      String[] p = url.split("\\/");
+      if (p.length != 2) {
+        throw new FHIRException("The URL '" + url + "' was not understood - expecting type/id");                
+      }
+      if (knownFiles.containsKey(p[0]+"/"+p[1])) {
+        tgt = ManagedFileAccess.file(knownFiles.get(p[0]+"/"+p[1]));
+        return loadFile(tgt);
+      }
+      tgt = ManagedFileAccess.file(rc, p[0]+"-"+p[1]+".json");
+      if (tgt.exists()) {
+        return see(tgt, loadFile(tgt));
+      }
+      tgt = ManagedFileAccess.file(rc, p[0]+"-"+p[1]+".xml");
+      if (tgt.exists()) {
+        return see(tgt, loadFile(tgt));
+      }
+      // didn't find it? now scan...
+      for (File f : ManagedFileAccess.listFiles(rc)) {
+        if (isPossibleMatch(f, p[0], p[1])) {
+          Element e = see(f, loadFile(f));
+          if (p[0].equals(e.fhirType()) && p[1].equals(e.getIdBase())) {
+            return e;
+          }
+        }
+      }
+      return null;
+    } else {
+      throw new FHIRException("The resolution context '"+resolutionContext+"' was not understood");
+
+    }
+  }
+
+  private Element see(File f, Element e) {
+    knownFiles.put(e.fhirType()+"/"+e.getIdBase(), f.getAbsolutePath());
+    return e;
+  }
+
+  private boolean isPossibleMatch(File f, String rt, String id) throws FileNotFoundException, IOException {
+    String src = FileUtilities.fileToString(f);
+    if (f.getName().endsWith(".xml")) {
+      return src.contains("<"+rt) && src.contains("\""+id+"\"");
+    } else {
+      return src.contains("\""+rt+"\"") && src.contains("\""+id+"\"");      
+    }
+  }
+
+  private Element loadFile(File tgt) throws FHIRFormatError, DefinitionException, FHIRException, FileNotFoundException, IOException {
+    if (tgt.getName().endsWith(".xml")) {
+      return Manager.parse(context, new FileInputStream(tgt), FhirFormat.XML).get(0).getElement();
+    } else {
+      return Manager.parse(context, new FileInputStream(tgt), FhirFormat.JSON).get(0).getElement();
+    }
   }
 
   @Override
   public ReferenceValidationPolicy policyForReference(IResourceValidator validator,
                                                       Object appContext,
                                                       String path,
-                                                      String url) {
-    return ReferenceValidationPolicy.CHECK_TYPE_IF_EXISTS;
-  }
-
-  @Override
-  public ContainedReferenceValidationPolicy policyForContained(IResourceValidator validator,
-      Object appContext,
-      StructureDefinition structure,
-      ElementDefinition element,
-      String containerType,
-      String containerId,
-      Element.SpecialElement containingResourceType,
-      String path,
-      String url) {
-    return ContainedReferenceValidationPolicy.CHECK_VALID;
-  }
-
-  @Override
-  public EnumSet<ResourceValidationAction> policyForResource(IResourceValidator validator, Object appContext,
-      StructureDefinition type, String path) {
-    return EnumSet.allOf(ResourceValidationAction.class);
-  }
-
-  @Override
-  public EnumSet<ElementValidationAction> policyForElement(IResourceValidator validator, Object appContext,
-      StructureDefinition structure, ElementDefinition element, String path) {
-    return EnumSet.allOf(ElementValidationAction.class);
+                                                      String url,
+                                                      ReferenceDestinationType destinationType) {
+    return policyAdvisor.policyForReference(validator, appContext, path, url, destinationType);
   }
   
   @Override
-  public boolean resolveURL(IResourceValidator validator, Object appContext, String path, String url, String type, boolean canonical) throws IOException, FHIRException {
+  public boolean resolveURL(IResourceValidator validator, Object appContext, String path, String url, String type, boolean canonical, List<CanonicalType> targets) throws IOException, FHIRException {
     if (!Utilities.isAbsoluteUrl(url)) {
       return false;
     }
@@ -272,7 +358,7 @@ public class StandAloneValidatorFetcher implements IValidatorResourceFetcher, IV
   }
 
   @Override
-  public CanonicalResource fetchCanonicalResource(IResourceValidator validator, String url) throws URISyntaxException {
+  public CanonicalResource fetchCanonicalResource(IResourceValidator validator, Object appContext, String url) throws URISyntaxException {
     if (url.contains("|")) {
       url = url.substring(0, url.indexOf("|"));
     }
@@ -309,22 +395,87 @@ public class StandAloneValidatorFetcher implements IValidatorResourceFetcher, IV
   @Override
   public void findResource(Object validator, String url) {
     try {
-      resolveURL((IResourceValidator) validator, null, null, url, null, false);
+      resolveURL((IResourceValidator) validator, null, null, url, null, false, null);
     } catch (Exception e) {
     }
   }
 
   @Override
-  public EnumSet<CodedContentValidationAction> policyForCodedContent(IResourceValidator validator,
-      Object appContext,
-      String stackPath,
-      ElementDefinition definition,
-      StructureDefinition structure,
-      BindingKind kind,
-      AdditionalBindingPurpose purpose,
-      ValueSet valueSet,
-      List<String> systems) {
-    return EnumSet.allOf(CodedContentValidationAction.class);
+  public Set<String> fetchCanonicalResourceVersions(IResourceValidator validator, Object appContext, String url) {
+    return new HashSet<>();
+  }
+
+  @Override
+  public boolean isSuppressMessageId(String path, String messageId) {
+    return policyAdvisor.isSuppressMessageId(path, messageId);
+  }
+
+  @Override
+  public ContainedReferenceValidationPolicy policyForContained(IResourceValidator validator, Object appContext,
+      StructureDefinition structure, ElementDefinition element, String containerType, String containerId,
+      SpecialElement containingResourceType, String path, String url) {
+    return policyAdvisor.policyForContained(validator, appContext, structure, element, containerType, containerId, containingResourceType, path, url);
+  }
+
+  @Override
+  public EnumSet<ResourceValidationAction> policyForResource(IResourceValidator validator, Object appContext,
+      StructureDefinition type, String path) {
+    return policyAdvisor.policyForResource(validator, appContext, type, path);
+  }
+
+  @Override
+  public EnumSet<ElementValidationAction> policyForElement(IResourceValidator validator, Object appContext,
+      StructureDefinition structure, ElementDefinition element, String path) {
+    return policyAdvisor.policyForElement(validator, appContext, structure, element, path);
+  }
+
+  @Override
+  public EnumSet<CodedContentValidationAction> policyForCodedContent(IResourceValidator validator, Object appContext,
+      String stackPath, ElementDefinition definition, StructureDefinition structure, BindingKind kind,
+      AdditionalBindingPurpose purpose, ValueSet valueSet, List<String> systems) {
+    return policyAdvisor.policyForCodedContent(validator, appContext, stackPath, definition, structure, kind, purpose, valueSet, systems);
+  }
+
+  @Override
+  public List<StructureDefinition> getImpliedProfilesForResource(IResourceValidator validator, Object appContext,
+      String stackPath, ElementDefinition definition, StructureDefinition structure, Element resource, boolean valid,
+      IMessagingServices msgServices, List<ValidationMessage> messages) {
+    return policyAdvisor.getImpliedProfilesForResource(validator, appContext, stackPath, definition, structure, resource, valid, msgServices, messages);
+  }
+
+  @Override
+  public ReferenceValidationPolicy getReferencePolicy() {
+    return policyAdvisor.getReferencePolicy();
+  }
+
+  public void setReferencePolicy(ReferenceValidationPolicy policy) {
+    if (policyAdvisor instanceof BasePolicyAdvisorForFullValidation) {
+      ((BasePolicyAdvisorForFullValidation) policyAdvisor).setRefpol(policy);
+    } else {
+      throw new Error("Cannot set reference policy on a "+policy.getClass().getName());      
+    }
+  }
+
+  public IValidationPolicyAdvisor getPolicyAdvisor() {
+    return policyAdvisor;
+  }
+
+  public IValidationPolicyAdvisor setPolicyAdvisor(IValidationPolicyAdvisor policyAdvisor) {
+    this.policyAdvisor = policyAdvisor;
+    return this;
+  }
+
+  public String getResolutionContext() {
+    return resolutionContext;
+  }
+
+  public void setResolutionContext(String resolutionContext) {
+    this.resolutionContext = resolutionContext;
+  }
+
+  @Override
+  public SpecialValidationAction policyForSpecialValidation(IResourceValidator validator, Object appContext, SpecialValidationRule rule, String stackPath, Element resource, Element element) {
+    return policyAdvisor.policyForSpecialValidation(validator, appContext, rule, stackPath, resource, element);
   }
 
 }

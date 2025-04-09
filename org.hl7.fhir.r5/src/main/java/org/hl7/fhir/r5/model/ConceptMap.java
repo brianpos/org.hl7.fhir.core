@@ -180,7 +180,9 @@ public class ConceptMap extends MetadataResource {
         throw new FHIRException("Unknown ConceptMapAttributeType code '"+codeString+"'");
         }
     public String toCode(ConceptMapAttributeType code) {
-      if (code == ConceptMapAttributeType.CODE)
+       if (code == ConceptMapAttributeType.NULL)
+           return null;
+       if (code == ConceptMapAttributeType.CODE)
         return "code";
       if (code == ConceptMapAttributeType.CODING)
         return "Coding";
@@ -191,7 +193,7 @@ public class ConceptMap extends MetadataResource {
       if (code == ConceptMapAttributeType.QUANTITY)
         return "Quantity";
       return "?";
-      }
+   }
     public String toSystem(ConceptMapAttributeType code) {
       return code.getSystem();
       }
@@ -296,14 +298,16 @@ public class ConceptMap extends MetadataResource {
         throw new FHIRException("Unknown ConceptMapGroupUnmappedMode code '"+codeString+"'");
         }
     public String toCode(ConceptMapGroupUnmappedMode code) {
-      if (code == ConceptMapGroupUnmappedMode.USESOURCECODE)
+       if (code == ConceptMapGroupUnmappedMode.NULL)
+           return null;
+       if (code == ConceptMapGroupUnmappedMode.USESOURCECODE)
         return "use-source-code";
       if (code == ConceptMapGroupUnmappedMode.FIXED)
         return "fixed";
       if (code == ConceptMapGroupUnmappedMode.OTHERMAP)
         return "other-map";
       return "?";
-      }
+   }
     public String toSystem(ConceptMapGroupUnmappedMode code) {
       return code.getSystem();
       }
@@ -464,7 +468,9 @@ public class ConceptMap extends MetadataResource {
         throw new FHIRException("Unknown ConceptMapPropertyType code '"+codeString+"'");
         }
     public String toCode(ConceptMapPropertyType code) {
-      if (code == ConceptMapPropertyType.CODING)
+       if (code == ConceptMapPropertyType.NULL)
+           return null;
+       if (code == ConceptMapPropertyType.CODING)
         return "Coding";
       if (code == ConceptMapPropertyType.STRING)
         return "string";
@@ -479,7 +485,7 @@ public class ConceptMap extends MetadataResource {
       if (code == ConceptMapPropertyType.CODE)
         return "code";
       return "?";
-      }
+   }
     public String toSystem(ConceptMapPropertyType code) {
       return code.getSystem();
       }
@@ -1777,10 +1783,24 @@ public class ConceptMap extends MetadataResource {
 
   }
 
+  public SourceElementComponent getOrAddElement(String code) {
+    for (SourceElementComponent e : getElement()) {
+      if (code.equals(e.getCode())) {
+        return e;  
+      }
+    }
+    return addElement().setCode(code);
+  }
+
   }
 
     @Block()
     public static class SourceElementComponent extends BackboneElement implements IBaseBackboneElement {
+        @Override
+      public String toString() {
+        return "SourceElementComponent [code=" + code + ", display=" + display + ", noMap=" + noMap + "]";
+      }
+
         /**
          * Identity (code or path) or the element/item being mapped.
          */
@@ -2260,10 +2280,30 @@ public class ConceptMap extends MetadataResource {
 
   }
 
+  public boolean hasTargetCode(String code) {
+    for (TargetElementComponent tgt : getTarget()) {
+      if (code.equals(tgt.getCode())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public TargetElementComponent addTarget(String code, ConceptMapRelationship relationship) {
+    TargetElementComponent tgt = addTarget();
+    tgt.setCode(code);
+    tgt.setRelationship(relationship);
+    return tgt;
+  }
   }
 
     @Block()
     public static class TargetElementComponent extends BackboneElement implements IBaseBackboneElement {
+        @Override
+      public String toString() {
+        return "TargetElementComponent [code=" + code + ", relationship=" + relationship + "]";
+      }
+
         /**
          * Identity (code or path) or the element/item that the map refers to.
          */
@@ -8572,7 +8612,42 @@ public class ConceptMap extends MetadataResource {
   private String tail(String uri) {
     return uri.contains("/") ? uri.substring(uri.lastIndexOf("/")+1) : uri;
   }
+
+  public ConceptMapGroupComponent getGroup(String su, String tu) {
+    for (ConceptMapGroupComponent g : getGroup()) {
+      if (su.equals(g.getSource()) && tu.equals(g.getTarget())) {
+        return g;
+      }      
+    }
+    return null;
+  }
+
+  public ConceptMapGroupComponent forceGroup(String su, String tu) {
+    for (ConceptMapGroupComponent g : getGroup()) {
+      if (su.equals(g.getSource()) && tu.equals(g.getTarget())) {
+        return g;
+      }      
+    }
+    ConceptMapGroupComponent g = addGroup();
+    g.setSource(su);
+    g.setTarget(tu);
+    return g;
+    
+  }
+
+  public List<ConceptMapGroupComponent> getGroups(String su) {
+    List<ConceptMapGroupComponent> res = new ArrayList<>();
+
+    for (ConceptMapGroupComponent g : getGroup()) {
+      if (su.equals(g.getSource())) {
+        res.add(g);
+      }      
+    }
+    return res;
+  }
+  
 // end addition
+
 
 }
 

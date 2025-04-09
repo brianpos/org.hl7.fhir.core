@@ -17,6 +17,7 @@ import org.hl7.fhir.exceptions.FHIRFormatError;
 import org.hl7.fhir.exceptions.PathEngineException;
 
 import org.hl7.fhir.r5.conformance.profile.BindingResolution;
+import org.hl7.fhir.r5.conformance.profile.SnapshotGenerationPreProcessor;
 import org.hl7.fhir.r5.conformance.profile.ProfileKnowledgeProvider;
 import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
 import org.hl7.fhir.r5.conformance.profile.ProfileUtilities.AllowUnknownProfile;
@@ -31,6 +32,7 @@ import org.hl7.fhir.r5.formats.JsonParser;
 import org.hl7.fhir.r5.formats.XmlParser;
 import org.hl7.fhir.r5.model.Base;
 import org.hl7.fhir.r5.model.ElementDefinition.ElementDefinitionBindingComponent;
+import org.hl7.fhir.r5.model.Narrative;
 import org.hl7.fhir.r5.model.Resource;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionKind;
@@ -40,10 +42,13 @@ import org.hl7.fhir.r5.renderers.RendererFactory;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.GenerationRules;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.ResourceRendererMode;
+import org.hl7.fhir.r5.renderers.utils.ResourceWrapper;
 import org.hl7.fhir.r5.test.utils.TestingUtilities;
 import org.hl7.fhir.r5.utils.XVerExtensionManager;
 import org.hl7.fhir.r5.utils.validation.IResourceValidator;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.npm.CommonPackages;
 import org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager;
 import org.hl7.fhir.utilities.npm.NpmPackage;
@@ -112,6 +117,8 @@ public class SnapShotGenerationTests {
     private StructureDefinition expected;
     private StructureDefinition output;
     public AllowUnknownProfile allow;
+    private boolean json;
+    private boolean sourceJson;
 
     public TestDetails(Element test) {
       super();
@@ -195,12 +202,21 @@ public class SnapShotGenerationTests {
     }
 
     public void load() throws FHIRFormatError, FileNotFoundException, IOException {
-      if (TestingUtilities.findTestResource("r5", "snapshot-generation", id + "-input.json"))
+      if (TestingUtilities.findTestResource("r5", "snapshot-generation", id + "-input.json")) {
+        sourceJson = true;
         source = (StructureDefinition) new JsonParser().parse(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", id + "-input.json"));
-      else
+      } else {
+        sourceJson = false;
         source = (StructureDefinition) new XmlParser().parse(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", id + "-input.xml"));
-      if (!fail)
-        expected = (StructureDefinition) new XmlParser().parse(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", id + "-expected.xml"));
+      }
+      if (!fail) {
+        if (TestingUtilities.findTestResource("r5", "snapshot-generation", id + "-expected.json")) {
+          json = true;
+          expected = (StructureDefinition) new JsonParser().parse(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", id + "-expected.json"));
+        } else {
+          expected = (StructureDefinition) new XmlParser().parse(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", id + "-expected.xml"));
+        }
+      }
       if (!Utilities.noString(include))
         included.add((StructureDefinition) new XmlParser().parse(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", include + ".xml")));
       if (!Utilities.noString(register)) {
@@ -286,6 +302,13 @@ public class SnapShotGenerationTests {
 
     @Override
     public String getLinkForUrl(String corePath, String s) {
+      // TODO Auto-generated method stub
+      return null;
+    }
+
+
+    @Override
+    public String getCanonicalForDefaultContext() {
       // TODO Auto-generated method stub
       return null;
     }
@@ -446,6 +469,10 @@ public class SnapShotGenerationTests {
       objects.add(Arguments.of(t.getId(), t, context));
       test = XMLUtil.getNextSibling(test);
     }
+    FilesystemPackageCacheManager pcm = new FilesystemPackageCacheManager.Builder().build();
+    NpmPackage npm = pcm.loadPackage("hl7.fhir.uv.sdc");
+    System.out.println("loading SDC "+npm.version());
+    TestingUtilities.getSharedWorkerContext().loadFromPackage(npm, null);
     return objects.stream();
   }
 
@@ -495,12 +522,13 @@ public class SnapShotGenerationTests {
     pu.sortDifferential(base, test.getOutput(), test.getOutput().getUrl(), errors, false);
     if (!errors.isEmpty())
       throw new FHIRException(errors.get(0));
-//    IOUtils.copy(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", test.getId() + "-expected.xml"), new FileOutputStream(TestingUtilities.tempFile("snapshot", test.getId() + "-expected.xml")));
-    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(TestingUtilities.tempFile("snapshot", test.getId() + "-expected.xml")), test.getOutput());
+//    IOUtils.copy(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", test.getId() + "-expected.xml"), ManagedFileAccess.outStream(TestingUtilities.tempFile("snapshot", test.getId() + "-expected.xml")));
+    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(TestingUtilities.tempFile("snapshot", test.getId() + "-expected.xml")), test.getOutput());
     Assertions.assertTrue(test.expected.equalsDeep(test.output), "Output does not match expected");
   }
 
   private void testGen(boolean fail, TestDetails test, SnapShotGenerationTestsContext context) throws Exception {
+    FileUtilities.createDirectory(Utilities.path("[tmp]", "snapshot", "input"));
     if (!Utilities.noString(test.register)) {
       List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
       ProfileUtilities pu = new ProfileUtilities(TestingUtilities.getSharedWorkerContext(), messages, null);
@@ -551,17 +579,24 @@ public class SnapShotGenerationTests {
       if (errors.size() > 0)
         throw new FHIRException("Sort failed: " + errors.toString());
     }
+    StructureDefinition sdc = test.getSource().copy();
+    new SnapshotGenerationPreProcessor(pu).process(sdc.getDifferential());
+    if (test.sourceJson) {
+      new JsonParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(Utilities.path("[tmp]", "snapshot", "input", test.id + "-input.json")), sdc);
+    } else {
+      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(Utilities.path("[tmp]", "snapshot", "input", test.id + "-input.xml")), sdc);
+    }
+
+
+    List<ValidationMessage> ml = new ArrayList<>();
     try {
       messages.clear();
       pu.generateSnapshot(base, output, test.getSource().getUrl(), "http://test.org/profile", test.getSource().getName());
-      List<ValidationMessage> ml = new ArrayList<>();
       for (ValidationMessage vm : messages) {
         if (vm.getLevel() == IssueSeverity.ERROR) {
+          System.out.println(vm.summary());
           ml.add(vm);
         }
-      }
-      if (ml.size() > 0) {
-        throw new FHIRException("Snapshot Generation failed: " + ml.toString());
       }
     } catch (Throwable e) {
       System.out.println("\r\nException: " + e.getMessage());
@@ -571,17 +606,24 @@ public class SnapShotGenerationTests {
       RenderingContext rc = new RenderingContext(TestingUtilities.getSharedWorkerContext(), null, null, "http://hl7.org/fhir", "", null, ResourceRendererMode.END_USER, GenerationRules.VALID_RESOURCE);
       rc.setDestDir(Utilities.path("[tmp]", "snapshot"));
       rc.setProfileUtilities(new ProfileUtilities(TestingUtilities.getSharedWorkerContext(), null, new TestPKP()));
-      RendererFactory.factory(output, rc).render(output);
+      RendererFactory.factory(output, rc).renderResource(ResourceWrapper.forResource(rc.getContextUtilities(), output));
     }
+    // we just generated it - but we don't care what it is here, just that there's no exceptions (though we need it for the rules)
+    Narrative txt = output.getText();
+    output.setText(null);
     if (!fail) {
       test.output = output;
       TestingUtilities.getSharedWorkerContext().cacheResource(output);
-      File dst = new File(TestingUtilities.tempFile("snapshot", test.getId() + "-expected.xml"));
-      if (dst.exists())
+      File dst = ManagedFileAccess.file(TestingUtilities.tempFile("snapshot", test.getId() + "-expected" + (test.json ? ".json" : ".xml")));
+      if (dst.exists()) {
         dst.delete();
-//      IOUtils.copy(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", test.getId() + "-expected.xml"), new FileOutputStream(dst));
-      String actualFilePath = TestingUtilities.tempFile("snapshot", test.getId() + "-expected.xml");
-      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(actualFilePath), output);
+      }
+//      IOUtils.copy(TestingUtilities.loadTestResourceStream("r5", "snapshot-generation", test.getId() + "-expected.xml"), ManagedFileAccess.outStream(dst));
+      if (test.json) {
+        new JsonParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(dst.getAbsolutePath()), output);        
+      } else {
+        new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(dst.getAbsolutePath()), output);
+      }
       StructureDefinition t1 = test.expected.copy();
       t1.setText(null);
       StructureDefinition t2 = test.output.copy();
@@ -592,8 +634,13 @@ public class SnapShotGenerationTests {
         System.out.println("Encountered unexpected change in diff in structure definition");
 //        DiffUtils.testDiff(dst.getAbsolutePath(), actualFilePath);
       }
+
       Assertions.assertTrue(structureDefinitionEquality, "Output does not match expected");
     }
+    if (ml.size() > 0) {
+      throw new FHIRException("Snapshot Generation failed: " + ml.toString());
+    }
+    output.setText(txt);
   }
 
   private StructureDefinition getSD(String url, SnapShotGenerationTestsContext context) throws DefinitionException, FHIRException, IOException {

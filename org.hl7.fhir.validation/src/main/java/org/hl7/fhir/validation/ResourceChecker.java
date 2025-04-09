@@ -9,7 +9,7 @@ import org.hl7.fhir.r5.elementmodel.Manager.FhirFormat;
 import org.hl7.fhir.r5.elementmodel.SHCParser;
 import org.hl7.fhir.r5.elementmodel.SHCParser.JWT;
 import org.hl7.fhir.r5.utils.structuremap.StructureMapUtilities;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.json.parser.JsonParser;
@@ -27,7 +27,7 @@ public class ResourceChecker {
 //    if (Utilities.existsInList(ext, "jwt", "jws"))
 //      return Manager.FhirFormat.SHC;
 //
-//    return checkIsResource(context, debug, TextFile.fileToBytes(path), path);
+//    return checkIsResource(context, debug, FileUtilities.fileToBytes(path), path);
 //  }
   public static Manager.FhirFormat checkIsResource(SimpleWorkerContext context, boolean debug, byte[] cnt, String filename, boolean guessFromExtension) {
 //    System.out.println("   ..Detect format for " + filename);
@@ -36,7 +36,7 @@ public class ResourceChecker {
       return null;
     }
     if (guessFromExtension) {
-      String ext = Utilities.getFileExtension(filename);
+      String ext = Utilities.getFileExtension(filename).toLowerCase();
       if (Utilities.existsInList(ext, "xml")) {
         return FhirFormat.XML;            
       }
@@ -48,6 +48,9 @@ public class ResourceChecker {
       }
       if (Utilities.existsInList(ext, "jwt", "jws")) {
         return Manager.FhirFormat.SHC;
+      }
+      if (Utilities.existsInList(ext, "ndjson")) {
+        return Manager.FhirFormat.NDJSON;
       }
       if (Utilities.existsInList(ext, "json")) {
         if (cnt.length > 2048) {
@@ -65,7 +68,7 @@ public class ResourceChecker {
       }
       if (Utilities.existsInList(ext, "txt")) {
         try {
-          String src = TextFile.bytesToString(cnt);
+          String src = FileUtilities.bytesToString(cnt);
           if (src.startsWith("shc:/")) {
             return FhirFormat.SHC;
           }
@@ -84,6 +87,14 @@ public class ResourceChecker {
     } catch (Exception e) {
       if (debug) {
         System.out.println("Not JSON: " + e.getMessage());
+      }
+    }
+    try {
+      Manager.parse(context, new ByteArrayInputStream(cnt), Manager.FhirFormat.NDJSON);
+      return Manager.FhirFormat.NDJSON;
+    } catch (Exception e) {
+      if (debug) {
+        System.out.println("Not NDJSON: " + e.getMessage());
       }
     }
     try {
@@ -118,7 +129,7 @@ public class ResourceChecker {
       }
     }
     try {
-      new StructureMapUtilities(context, null, null).parse(TextFile.bytesToString(cnt), null);
+      new StructureMapUtilities(context, null, null).parse(FileUtilities.bytesToString(cnt), null);
       return Manager.FhirFormat.TEXT;
     } catch (Exception e) {
       if (debug) {

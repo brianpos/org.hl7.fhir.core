@@ -28,13 +28,17 @@ import org.hl7.fhir.r5.model.OperationOutcome;
 import org.hl7.fhir.r5.renderers.RendererFactory;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext;
 import org.hl7.fhir.r5.renderers.utils.RenderingContext.GenerationRules;
+import org.hl7.fhir.r5.renderers.utils.ResourceWrapper;
 import org.hl7.fhir.r5.utils.EOperationOutcome;
 import org.hl7.fhir.r5.utils.OperationOutcomeUtilities;
 import org.hl7.fhir.utilities.ByteProvider;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
+import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.hl7.fhir.validation.cli.utils.AsteriskFilter;
 import org.hl7.fhir.validation.cli.utils.Common;
 import org.w3c.dom.Document;
@@ -113,7 +117,7 @@ public class ValidatorUtils {
   }
 
   protected static Document parseXml(byte[] cnt) throws ParserConfigurationException, SAXException, IOException {
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    DocumentBuilderFactory factory = XMLUtil.newXXEProtectedDocumentBuilderFactory();
     // xxe protection
     factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
     factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
@@ -150,7 +154,7 @@ public class ValidatorUtils {
       op.addIssue().setSeverity(OperationOutcome.IssueSeverity.INFORMATION).setCode(OperationOutcome.IssueType.INFORMATIONAL).getDetails().setText(context.formatMessage(I18nConstants.ALL_OK));
     }
     RenderingContext rc = new RenderingContext(context, null, null, "http://hl7.org/fhir", "", null, RenderingContext.ResourceRendererMode.END_USER, GenerationRules.VALID_RESOURCE);
-    RendererFactory.factory(op, rc).render(op);
+    RendererFactory.factory(op, rc).renderResource(ResourceWrapper.forResource(rc.getContextUtilities(), op));
     return op;
   }
 
@@ -166,12 +170,12 @@ public class ValidatorUtils {
       src.process = true;
     } else if (Common.isWildcardPath(name)) {
       AsteriskFilter filter = new AsteriskFilter(name);
-      File[] files = new File(filter.getDir()).listFiles(filter);
+      File[] files = ManagedFileAccess.file(filter.getDir()).listFiles(filter);
       for (File file : files) {
         addSourceFile(refs, file);
       }
     } else {
-      File file = new File(name);
+      File file = ManagedFileAccess.file(name);
       if (!file.exists()) {
         if (System.console() != null) {
           System.console().printf(context.formatMessage(I18nConstants.BAD_FILE_PATH_ERROR, name));
@@ -186,7 +190,7 @@ public class ValidatorUtils {
       } else {
         for (File fileInDirectory : file.listFiles()) {
           if (fileInDirectory.isFile()) {
-            if (!Utilities.isIgnorableFile(fileInDirectory)) {
+            if (!FileUtilities.isIgnorableFile(fileInDirectory)) {
               addSourceFile(refs, fileInDirectory);
             }
           }

@@ -60,8 +60,8 @@ import org.hl7.fhir.dstu2.utils.client.FHIRToolingClient;
 import org.hl7.fhir.dstu2.utils.validation.IResourceValidator;
 import org.hl7.fhir.exceptions.DefinitionException;
 import org.hl7.fhir.exceptions.FHIRException;
-import org.hl7.fhir.utilities.CSFileInputStream;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.CSFileInputStream;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 
@@ -71,6 +71,7 @@ import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
  * very light cient to connect to an open unauthenticated terminology service
  */
 
+@Deprecated
 public class SimpleWorkerContext extends BaseWorkerContext implements IWorkerContext, ProfileKnowledgeProvider {
 
   // all maps are to the full URI

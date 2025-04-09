@@ -8,14 +8,16 @@ import java.util.Map;
 import org.hl7.fhir.r5.comparison.CanonicalResourceComparer.CanonicalResourceComparison;
 import org.hl7.fhir.r5.model.Base;
 import org.hl7.fhir.r5.model.CanonicalResource;
+import org.hl7.fhir.r5.utils.UserDataNames;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 
+@MarkedToMoveToAdjunctPackage
 public class VersionComparisonAnnotation {
 
   public enum AnotationType {
     NoChange, Added, Changed, Deleted;
   }
 
-  public static final String USER_DATA_NAME = "version-annotation";
 
   private AnotationType type;
   private String original;  
@@ -66,10 +68,6 @@ public class VersionComparisonAnnotation {
     this.comp = comp;
   }
 
-  public static String getUserDataName() {
-    return USER_DATA_NAME;
-  }
-
   public AnotationType getType() {
     return type;
   }
@@ -89,8 +87,8 @@ public class VersionComparisonAnnotation {
 
   public static boolean hasDeleted(Base base, String... names) {
     boolean result = false;
-    if (base.hasUserData(USER_DATA_NAME)) {
-      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(USER_DATA_NAME);
+    if (base.hasUserData(UserDataNames.COMP_VERSION_ANNOTATION)) {
+      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(UserDataNames.COMP_VERSION_ANNOTATION);
       for (String name : names) {
         if (self.deletedChildren != null && self.deletedChildren.containsKey(name))  {
           result = true;
@@ -102,8 +100,8 @@ public class VersionComparisonAnnotation {
 
   public static List<Base> getDeleted(Base base, String... names) {
     List<Base> result = new ArrayList<>();
-    if (base.hasUserData(USER_DATA_NAME)) {
-      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(USER_DATA_NAME);
+    if (base.hasUserData(UserDataNames.COMP_VERSION_ANNOTATION)) {
+      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(UserDataNames.COMP_VERSION_ANNOTATION);
       for (String name : names) {
         if (self.deletedChildren != null && self.deletedChildren.containsKey(name))  {
           result.addAll(self.deletedChildren.get(name));
@@ -115,8 +113,8 @@ public class VersionComparisonAnnotation {
 
   public static Base getDeletedItem(Base base, String name) {
     List<Base> result = new ArrayList<>();
-    if (base.hasUserData(USER_DATA_NAME)) {
-      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(USER_DATA_NAME);
+    if (base.hasUserData(UserDataNames.COMP_VERSION_ANNOTATION)) {
+      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(UserDataNames.COMP_VERSION_ANNOTATION);
       if (self.deletedChildren != null && self.deletedChildren.containsKey(name))  {
         result.addAll(self.deletedChildren.get(name));
       }
@@ -128,8 +126,8 @@ public class VersionComparisonAnnotation {
 
 
   public static CanonicalResourceComparison<? extends CanonicalResource> artifactComparison(Base base) {
-    if (base.hasUserData(USER_DATA_NAME)) {
-      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(USER_DATA_NAME);
+    if (base.hasUserData(UserDataNames.COMP_VERSION_ANNOTATION)) {
+      VersionComparisonAnnotation self = (VersionComparisonAnnotation) base.getUserData(UserDataNames.COMP_VERSION_ANNOTATION);
       return self.comp;
     } else {
       return null;

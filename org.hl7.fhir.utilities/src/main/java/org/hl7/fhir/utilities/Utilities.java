@@ -4,75 +4,28 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
-/*
-  Copyright (c) 2011+, HL7, Inc.
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without modification, 
-  are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this 
-     list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, 
-     this list of conditions and the following disclaimer in the documentation 
-     and/or other materials provided with the distribution.
- * Neither the name of HL7 nor the names of its contributors may be used to 
-     endorse or promote products derived from this software without specific 
-     prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
-  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
-  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
-  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
-  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-  POSSIBILITY OF SUCH DAMAGE.
-
- */
-
-
-import org.apache.commons.io.FileUtils;
 import org.hl7.fhir.exceptions.FHIRException;
-import org.hl7.fhir.utilities.FileNotifier.FileNotifier2;
-import org.hl7.fhir.utilities.Utilities.CaseInsensitiveSorter;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.settings.FhirSettings;
 
 public class Utilities {
 
-  private static final String UUID_REGEX = "[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}";
-  private static final String OID_REGEX = "[0-2](\\.(0|[1-9][0-9]*))+";
   static final String C_TEMP_DIR = "c:\\temp";
 
   /**
@@ -171,6 +124,10 @@ public class Utilities {
     } catch (Exception e) {
       return false;
     }
+  }
+
+  public static boolean isValidId(String id) {
+    return id.matches("[A-Za-z0-9\\-\\.]{1,64}");
   }
 
   public enum DecimalStatus {
@@ -311,115 +268,6 @@ public class Utilities {
     return s.substring(0, 1).toUpperCase() + s.substring(1);
   }
 
-  public static void copyDirectory(String sourceFolder, String destFolder, FileNotifier notifier) throws IOException, FHIRException {
-    CSFile src = new CSFile(sourceFolder);
-    if (!src.exists())
-      throw new FHIRException("Folder " + sourceFolder + " not found");
-    File dst = new File(destFolder);
-    if(!dst.getCanonicalFile().getName().equals(dst.getName())) {
-      File tmp = new File(destFolder+System.currentTimeMillis());
-      if (!dst.renameTo(tmp)) {
-        throw new IOException("fixing case from "+dst.getCanonicalFile().getName()+" to "+tmp.getName()+" failed");
-      }
-      if (!tmp.renameTo(dst)) {
-        throw new IOException("fixing case from "+tmp.getCanonicalFile().getName()+" to "+dst.getName()+" failed");
-      }
-    } else if (!dst.exists()) {    
-      createDirectory(destFolder);
-    }
-
-    String[] files = src.list();
-    for (String f : files) {
-      if (new CSFile(sourceFolder + File.separator + f).isDirectory()) {
-        if (!f.startsWith(".")) { // ignore .git files...
-          copyDirectory(sourceFolder + File.separator + f, destFolder + File.separator + f, notifier);
-        }
-      } else {
-        if (notifier != null)
-          notifier.copyFile(sourceFolder + File.separator + f, destFolder + File.separator + f);
-        copyFile(new CSFile(sourceFolder + File.separator + f), new /*CS*/File(destFolder + File.separator + f)); // case doesn't have to match on the target
-      }
-    }
-  }
-
-
-  public static void copyDirectory2(String sourceFolder, String destFolder, FileNotifier2 notifier) throws IOException, FHIRException {
-    CSFile src = new CSFile(sourceFolder);
-    if (!src.exists())
-      throw new FHIRException("Folder " + sourceFolder + " not found");
-    createDirectory(destFolder);
-
-    String[] files = src.list();
-    for (String f : files) {
-      if (new CSFile(sourceFolder + File.separator + f).isDirectory()) {
-        if (!f.startsWith(".")) { // ignore .git files...
-          boolean doCopy = notifier != null ? notifier.copyFolder(sourceFolder + File.separator + f, destFolder + File.separator + f) : true;
-          if (doCopy) {
-            copyDirectory2(sourceFolder + File.separator + f, destFolder + File.separator + f, notifier);
-          }
-        }
-      } else {
-        boolean doCopy = notifier != null ? notifier.copyFile(sourceFolder + File.separator + f, destFolder + File.separator + f) : true;
-        if (doCopy) {
-          copyFile(new CSFile(sourceFolder + File.separator + f), new CSFile(destFolder + File.separator + f));
-        }
-      }
-    }
-  }
-
-  public static void copyFile(String source, String dest) throws IOException {
-    copyFile(new File(source), new File(dest));
-  }
-
-  public static void copyFile(File sourceFile, File destFile) throws IOException {
-    if (!destFile.exists()) {
-      if (!new CSFile(destFile.getParent()).exists()) {
-        createDirectory(destFile.getParent());
-      }
-      destFile.createNewFile();
-    } else if (!destFile.getCanonicalFile().getName().equals(destFile.getName())) {
-      // case mismatch
-      destFile.delete();
-      destFile.createNewFile();
-    }
-
-    FileInputStream source = null;
-    FileOutputStream destination = null;
-
-    try {
-      source = new FileInputStream(sourceFile);
-      destination = new FileOutputStream(destFile);
-      destination.getChannel().transferFrom(source.getChannel(), 0, source.getChannel().size());
-    } finally {
-      if (source != null) {
-        source.close();
-      }
-      if (destination != null) {
-        destination.close();
-      }
-    }
-  }
-
-  public static boolean checkFolder(String dir, List<String> errors)
-      throws IOException {
-    if (!new CSFile(dir).exists()) {
-      errors.add("Unable to find directory " + dir);
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  public static boolean checkFile(String purpose, String dir, String file, List<String> errors)
-      throws IOException {
-    if (!new CSFile(dir + file).exists()) {
-      if (errors != null)
-        errors.add("Unable to find " + purpose + " file " + file + " in " + dir);
-      return false;
-    } else {
-      return true;
-    }
-  }
 
   public static String asCSV(List<String> strings) {
     StringBuilder s = new StringBuilder();
@@ -446,37 +294,19 @@ public class Utilities {
     return s.toString();
   }
 
-  public static void clearDirectory(String folder, String... exemptions) throws IOException {
-    File dir = new File(folder);
-    if (dir.exists()) {
-      if (exemptions.length == 0)
-        FileUtils.cleanDirectory(dir);
-      else {
-        String[] files = new CSFile(folder).list();
-        if (files != null) {
-          for (String f : files) {
-            if (!existsInList(f, exemptions)) {
-              File fh = new CSFile(folder + File.separatorChar + f);
-              if (fh.isDirectory())
-                clearDirectory(fh.getAbsolutePath());
-              fh.delete();
-            }
-          }
-        }
+  public static String generateUniqueRandomUUIDPath(String path) throws IOException {
+    String randomUUIDPath = null;
+
+    while (randomUUIDPath == null) {
+      final String uuid = UUID.randomUUID().toString().toLowerCase();
+      final String pathCandidate = Utilities.path(path, uuid);
+
+      if (!ManagedFileAccess.file(pathCandidate).exists()) {
+        randomUUIDPath = pathCandidate;
       }
     }
-  }
 
-  public static File createDirectory(String path) throws IOException {
-    new CSFile(path).mkdirs();
-    return new File(path);
-  }
-
-  public static String changeFileExt(String name, String ext) {
-    if (name.lastIndexOf('.') > -1)
-      return name.substring(0, name.lastIndexOf('.')) + ext;
-    else
-      return name + ext;
+    return randomUUIDPath;
   }
 
   public static String cleanupTextString(String contents) {
@@ -486,19 +316,9 @@ public class Utilities {
       return contents.trim();
   }
 
-
   public static boolean noString(String v) {
     return v == null || v.equals("");
   }
-
-
-  public static void bytesToFile(byte[] content, String filename) throws IOException {
-    FileOutputStream out = new FileOutputStream(filename);
-    out.write(content);
-    out.close();
-
-  }
-
 
   public static String appendSlash(String definitions) {
     return definitions.endsWith(File.separator) ? definitions : definitions + File.separator;
@@ -510,15 +330,6 @@ public class Utilities {
     }
     return definitions.endsWith("/") ? definitions : definitions + "/";
   }
-
-
-  public static String fileTitle(String file) {
-    if (file == null)
-      return null;
-    String s = new File(file).getName();
-    return s.indexOf(".") == -1 ? s : s.substring(0, s.indexOf("."));
-  }
-
 
   public static String systemEol() {
     return System.getProperty("line.separator");
@@ -625,10 +436,16 @@ public class Utilities {
 
   public static String padRight(String src, char c, int len) {
     StringBuilder s = new StringBuilder();
-    s.append(src);
-    for (int i = 0; i < len - src.length(); i++)
-      s.append(c);
+    if (src != null) {
+      s.append(src);
+      for (int i = 0; i < len - src.length(); i++)
+        s.append(c);
+    }
     return s.toString();
+  }
+
+  public static String padRight(int num, char c, int len) {
+    return padRight(Integer.toString(num), c, len);
   }
 
 
@@ -655,7 +472,7 @@ public class Utilities {
   }
 
   public static File pathFile(String... args) throws IOException {
-    return new File(PathBuilder.getPathBuilder().buildPath(args));
+    return ManagedFileAccess.file(PathBuilder.getPathBuilder().buildPath(args));
   }
 
   public static String path(File f, String... args) throws IOException {
@@ -665,6 +482,13 @@ public class Utilities {
       a[i+1] = args[i];
     }
     return PathBuilder.getPathBuilder().buildPath(a);
+  }
+
+  public static String forcePath(String... args) throws IOException {
+    String path = path(args);
+    String folder = FileUtilities.getDirectoryForFile(path);
+    FileUtilities.createDirectory(folder);
+    return path;
   }
 
   /**
@@ -681,7 +505,7 @@ public class Utilities {
    * @see PathBuilder#buildPath(String...)
    */
   @Deprecated
-  public static String uncheckedPath(String... args) {
+  public static String uncheckedPath(String... args) throws IOException {
     return PathBuilder.getPathBuilder()
         .withRequireNonRootFirstEntry(false)
         .withRequireNonNullNonEmptyFirstEntry(false)
@@ -697,7 +521,7 @@ public class Utilities {
       if (arg != null) {
         if (!d)
           d = !noString(arg);
-        else if (s.toString() != null && !s.toString().endsWith("/") && !arg.startsWith("/"))
+        else if (s.toString() != null && !s.toString().endsWith("/") && !arg.startsWith("/") && !arg.startsWith("?") && !arg.startsWith("&"))
           s.append("/");
         s.append(arg);
       }
@@ -719,7 +543,89 @@ public class Utilities {
     return s.toString();
   }
 
+  public static String javaTokenize(String cs, boolean capFirst) {
+    if (cs == null)
+      return "";
+    StringBuilder s = new StringBuilder();
+    boolean upcase = capFirst;
+    for (int i = 0; i < cs.length(); i++) {
+      char c = cs.charAt(i);
+      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+        if (upcase) {
+          s.append(Character.toUpperCase(c));
+          upcase = false;
+        } else {
+          s.append(c);
+        }
+      } else {
+        upcase = true;
+      }
+    }
+    String res = s.toString();
+    if (isJavaReservedWord(res)) {
+      return "_"+res;
+    } else { 
+      return res;
+    }
+  }
 
+  public static boolean isJavaReservedWord(String word) {
+    if (word.equals("abstract")) return true;   
+    if (word.equals("assert")) return true;
+    if (word.equals("boolean")) return true;
+    if (word.equals("break")) return true;  
+    if (word.equals("byte")) return true;   
+    if (word.equals("case")) return true;
+    if (word.equals("catch")) return true;  
+    if (word.equals("char")) return true;   
+    if (word.equals("class")) return true;  
+    if (word.equals("const")) return true;  
+    if (word.equals("continue")) return true;   
+    if (word.equals("default")) return true;
+    if (word.equals("double")) return true;   
+    if (word.equals("do")) return true;   
+    if (word.equals("else")) return true;   
+    if (word.equals("enum")) return true;   
+    if (word.equals("extends")) return true;  
+    if (word.equals("false")) return true;
+    if (word.equals("final")) return true;  
+    if (word.equals("finally")) return true;  
+    if (word.equals("float")) return true;  
+    if (word.equals("for")) return true;  
+    if (word.equals("goto")) return true;   
+    if (word.equals("if")) return true;
+    if (word.equals("implements")) return true;   
+    if (word.equals("import")) return true;   
+    if (word.equals("instanceof")) return true;   
+    if (word.equals("int")) return true;  
+    if (word.equals("interface")) return true;  
+    if (word.equals("long")) return true;
+    if (word.equals("native")) return true;   
+    if (word.equals("new")) return true;  
+    if (word.equals("null")) return true;   
+    if (word.equals("package")) return true;  
+    if (word.equals("private")) return true;  
+    if (word.equals("protected")) return true;
+    if (word.equals("public")) return true;   
+    if (word.equals("return")) return true;   
+    if (word.equals("short")) return true;  
+    if (word.equals("static")) return true;   
+    if (word.equals("strictfp")) return true;   
+    if (word.equals("super")) return true;
+    if (word.equals("switch")) return true;   
+    if (word.equals("synchronized")) return true;   
+    if (word.equals("this")) return true;   
+    if (word.equals("throw")) return true;  
+    if (word.equals("throws")) return true;   
+    if (word.equals("transient")) return true;
+    if (word.equals("true")) return true;   
+    if (word.equals("try")) return true;  
+    if (word.equals("void")) return true;   
+    if (word.equals("volatile")) return true;
+    if (word.equals("while")) return true;
+    if (word.equals("Exception")) return true;
+    return false;
+  }
   public static boolean isToken(String tail) {
     if (tail == null || tail.length() == 0)
       return false;
@@ -741,16 +647,6 @@ public class Utilities {
 
   public static boolean isAlphabetic(char c) {
     return ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z'));
-  }
-
-
-  public static String getDirectoryForFile(String filepath) {
-    File f = new File(filepath);
-    return f.getParent();
-  }
-
-  public static String getDirectoryForURL(String url) {
-    return url.contains("/") && url.lastIndexOf("/") > 10 ? url.substring(0, url.lastIndexOf("/")) : url;
   }
 
   public static String appendPeriod(String s) {
@@ -776,19 +672,6 @@ public class Utilities {
     return string == null ? null : string.replace("\uFEFF", "");
   }
 
-
-  public static String oidTail(String id) {
-    if (id == null || !id.contains("."))
-      return id;
-    return id.substring(id.lastIndexOf(".") + 1);
-  }
-
-
-  public static String oidRoot(String id) {
-    if (id == null || !id.contains("."))
-      return id;
-    return id.substring(0, id.indexOf("."));
-  }
 
   public static String escapeJava(String doco) {
     if (doco == null)
@@ -825,13 +708,19 @@ public class Utilities {
     return parts.toArray(new String[]{});
   }
 
-
-  public static String encodeUri(String v) {
-    return v.replace(" ", "%20").replace("?", "%3F").replace("=", "%3D").replace("|", "%7C");
+  @Deprecated
+  public static String encodeUri(String string) {
+    return encodeUriParam(string);
   }
 
+  public static String encodeUriParam(String param) {
+    return URLEncoder.encode(param, StandardCharsets.UTF_8);
+  }
 
   public static String normalize(String s) {
+    return normalize(s, true);
+  }
+  public static String normalize(String s, boolean lower) {
     if (noString(s))
       return null;
     StringBuilder b = new StringBuilder();
@@ -839,7 +728,7 @@ public class Utilities {
     for (int i = 0; i < s.length(); i++) {
       char c = s.charAt(i);
       if (!isWhitespace(c)) {
-        b.append(Character.toLowerCase(c));
+        b.append(lower ? Character.toLowerCase(c) : c);
         isWhitespace = false;
       } else if (!isWhitespace) {
         if (c == '\r' || c == '\n') {
@@ -870,12 +759,6 @@ public class Utilities {
     }
     return b.toString().trim();
   }
-
-
-  public static void copyFileToDirectory(File source, File destDir) throws IOException {
-    copyFile(source, new File(path(destDir.getAbsolutePath(), source.getName())));
-  }
-
 
   public static String URLEncode(String string) {
     try {
@@ -932,6 +815,15 @@ public class Utilities {
         return true;
     return false;
   }
+  
+  public static boolean existsInListTrimmed(String value, String... array) {
+    if (value == null)
+      return false;
+    for (String s : array)
+      if (value.equals(s.trim()))
+        return true;
+    return false;
+  }
 
   public static boolean existsInList(int value, int... array) {
     for (int i : array)
@@ -960,41 +852,10 @@ public class Utilities {
     return name.toLowerCase();
   }
 
-  public static void deleteTempFiles() throws IOException {
-    File file = createTempFile("test", "test");
-    String folder = getDirectoryForFile(file.getAbsolutePath());
-    String[] list = new File(folder).list(new FilenameFilter() {
-      public boolean accept(File dir, String name) {
-        return name.startsWith("ohfu-");
-      }
-    });
-    if (list != null) {
-      for (String n : list) {
-        new File(path(folder, n)).delete();
-      }
-    }
-  }
-
-  public static File createTempFile(String prefix, String suffix) throws IOException {
-    // this allows use to eaily identify all our dtemp files and delete them, since delete on Exit doesn't really work.
-    File file = File.createTempFile("ohfu-" + prefix, suffix);
-    file.deleteOnExit();
-    return file;
-  }
-
-
   public static boolean isAsciiChar(char ch) {
     return ch >= ' ' && ch <= '~';
   }
 
-
-  public static String makeUuidLC() {
-    return UUID.randomUUID().toString().toLowerCase();
-  }
-
-  public static String makeUuidUrn() {
-    return "urn:uuid:" + UUID.randomUUID().toString().toLowerCase();
-  }
 
   public static boolean isURL(String s) {
     boolean ok = s.matches("^http(s{0,1})://[a-zA-Z0-9_/\\-\\.]+\\.([A-Za-z/]{2,5})[a-zA-Z0-9_/\\&\\?\\=\\-\\.\\~\\%]*");
@@ -1020,6 +881,10 @@ public class Utilities {
 
 
   public static String escapeJson(String value) {
+    return escapeJson(value, true);
+  }
+  
+  public static String escapeJson(String value, boolean escapeUnicodeWhitespace) {
     if (value == null)
       return "";
 
@@ -1037,7 +902,7 @@ public class Utilities {
         b.append("\\\\");
       else if (c == ' ')
         b.append(" ");
-      else if (isWhitespace(c)) {
+      else if ((c == '\r' || c == '\n') || (isWhitespace(c) && escapeUnicodeWhitespace)) { 
         b.append("\\u"+Utilities.padLeft(Integer.toHexString(c), '0', 4));
       } else if (((int) c) < 32)
         b.append("\\u" + Utilities.padLeft(Integer.toHexString(c), '0', 4));
@@ -1088,10 +953,6 @@ public class Utilities {
     return res;
   }
 
-  public static boolean isOid(String cc) {
-    return cc.matches(OID_REGEX);
-  }
-
   public static boolean equals(String one, String two) {
     if (one == null && two == null)
       return true;
@@ -1101,25 +962,12 @@ public class Utilities {
   }
 
 
-  public static void deleteAllFiles(String folder, String type) {
-    File src = new File(folder);
-    String[] files = src.list();
-    for (String f : files) {
-      if (new File(folder + File.separator + f).isDirectory()) {
-        deleteAllFiles(folder + File.separator + f, type);
-      } else if (f.endsWith(type)) {
-        new File(folder + File.separator + f).delete();
-      }
-    }
-
-  }
-
   public static boolean compareIgnoreWhitespace(File f1, File f2) throws IOException {
     InputStream in1 = null;
     InputStream in2 = null;
     try {
-      in1 = new BufferedInputStream(new FileInputStream(f1));
-      in2 = new BufferedInputStream(new FileInputStream(f2));
+      in1 = new BufferedInputStream(ManagedFileAccess.inStream(f1));
+      in2 = new BufferedInputStream(ManagedFileAccess.inStream(f2));
 
       int expectedByte = in1.read();
       while (expectedByte != -1) {
@@ -1160,7 +1008,7 @@ public class Utilities {
 
 
   public static boolean compareIgnoreWhitespace(String fn1, String fn2) throws IOException {
-    return compareIgnoreWhitespace(new File(fn1), new File(fn2));
+    return compareIgnoreWhitespace(ManagedFileAccess.file(fn1), ManagedFileAccess.file(fn2));
   }
 
 
@@ -1282,19 +1130,6 @@ public class Utilities {
     return b.toString();
   }
 
-
-  public static int countFilesInDirectory(String dirName) {
-    File dir = new File(dirName);
-    if (dir.exists() == false) {
-      return 0;
-    }
-    int i = 0;
-    for (File f : dir.listFiles())
-      if (!f.isDirectory())
-        i++;
-    return i;
-  }
-
   public static String makeId(String name) {
     StringBuilder b = new StringBuilder();
     for (char ch : name.toCharArray()) {
@@ -1310,22 +1145,6 @@ public class Utilities {
     return b.toString();
   }
 
-  public interface FileVisitor {
-    void visitFile(File file) throws FileNotFoundException, IOException;
-  }
-
-  public static void visitFiles(String folder, String extension, FileVisitor visitor) throws FileNotFoundException, IOException {
-    visitFiles(new File(folder), extension, visitor);
-  }
-
-  public static void visitFiles(File folder, String extension, FileVisitor visitor) throws FileNotFoundException, IOException {
-    for (File file : folder.listFiles()) {
-      if (file.isDirectory())
-        visitFiles(file, extension, visitor);
-      else if (extension == null || file.getName().endsWith(extension))
-        visitor.visitFile(file);
-    }
-  }
 
   public static String extractBaseUrl(String url) {
     if (url == null)
@@ -1338,10 +1157,6 @@ public class Utilities {
 
   public static String listCanonicalUrls(Set<String> keys) {
     return keys.toString();
-  }
-
-  public static boolean isValidId(String id) {
-    return id.matches("[A-Za-z0-9\\-\\.]{1,64}");
   }
 
   public static class CaseInsensitiveSorter implements Comparator<String> {
@@ -1364,6 +1179,17 @@ public class Utilities {
     list.addAll(set);
     Collections.sort(list);
     return list;
+  }
+
+  public static List<String> sortedReverse(Collection<String> set) {
+    List<String> list = new ArrayList<>();
+    list.addAll(set);
+    Collections.sort(list);
+    List<String> rlist = new ArrayList<>();
+    for (int i = list.size()-1; i >= 0; i--) {
+      rlist.add(list.get(i));
+    }
+    return rlist;
   }
 
   public static List<String> sorted(String[] set) {
@@ -1475,7 +1301,7 @@ public class Utilities {
   }
 
   public static boolean startsWithInList(String s, Collection<String> list) {
-    if (s == null) {
+    if (s == null || list == null) {
       return false;
     }
     for (String l : list) {
@@ -1577,84 +1403,10 @@ public class Utilities {
     return byteArrays;
   }
 
-  public static void unzip(InputStream zip, String target) throws IOException {
-    unzip(zip, Path.of(target));
-  }
-
-  public static void unzip(InputStream zip, Path target) throws IOException {
-    try (ZipInputStream zis = new ZipInputStream(zip)) {
-      ZipEntry zipEntry = zis.getNextEntry();
-      while (zipEntry != null) {
-        boolean isDirectory = false;
-
-        String n = makeOSSafe(zipEntry.getName());
-
-        if (n.endsWith(File.separator)) {
-          isDirectory = true;
-        }
-        Path newPath = zipSlipProtect(n, target);
-        if (isDirectory) {
-          Files.createDirectories(newPath);
-        } else {
-          if (newPath.getParent() != null) {
-            if (Files.notExists(newPath.getParent())) {
-              Files.createDirectories(newPath.getParent());
-            }
-          }
-          Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
-        }
-        zipEntry = zis.getNextEntry();
-      }
-      zis.closeEntry();
-    }
-  }
-
-  public static String makeOSSafe(String name) {
-    return name.replace("\\", File.separator).replace("/", File.separator);
-  }
-
-  public static Path zipSlipProtect(String zipName, Path targetDir)
-      throws IOException {
-
-    // test zip slip vulnerability
-    // Path targetDirResolved = targetDir.resolve("../../" + zipEntry.getName());
-
-    Path targetDirResolved = targetDir.resolve(zipName);
-
-    // make sure normalized file still has targetDir as its prefix
-    // else throws exception
-    Path normalizePath = targetDirResolved.normalize();
-    if (!normalizePath.startsWith(targetDir)) {
-      throw new IOException("Bad zip entry: " + zipName);
-    }
-
-    return normalizePath;
-  }
-
   final static int[] illegalChars = {34, 60, 62, 124, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 58, 42, 63, 92, 47};
 
   static {
     Arrays.sort(illegalChars);
-  }
-
-  public static String cleanFileName(String badFileName) {
-    StringBuilder cleanName = new StringBuilder();
-    int len = badFileName.codePointCount(0, badFileName.length());
-    for (int i=0; i<len; i++) {
-      int c = badFileName.codePointAt(i);
-      if (Arrays.binarySearch(illegalChars, c) < 0) {
-        cleanName.appendCodePoint(c);
-      }
-    }
-    return cleanName.toString();
-  }
-
-  public static boolean isValidUUID(String uuid) {
-    return uuid.matches(UUID_REGEX);
-  }
-
-  public static boolean isValidOID(String oid) {
-    return oid.matches(OID_REGEX);
   }
 
   public static int findinList(String[] list, String val) {
@@ -1679,31 +1431,47 @@ public class Utilities {
       value = value.substring(0, value.indexOf("e"));
     }    
     if (isZero(value)) {
-      return applyPrecision("-0.5000000000000000000000000", precision);
+      return applyPrecision("-0.5000000000000000000000000", precision, true);
     } else if (value.startsWith("-")) {
       return "-"+highBoundaryForDecimal(value.substring(1), precision)+(e == null ? "" : e);
     } else {
       if (value.contains(".")) {
-        return applyPrecision(minusOne(value)+"50000000000000000000000000000", precision)+(e == null ? "" : e);
+        return applyPrecision(minusOne(value)+"50000000000000000000000000000", precision, true)+(e == null ? "" : e);
       } else {
-        return applyPrecision(minusOne(value)+".50000000000000000000000000000", precision)+(e == null ? "" : e);
+        return applyPrecision(minusOne(value)+".50000000000000000000000000000", precision, true)+(e == null ? "" : e);
       }
     }
   }
 
-  private static String applyPrecision(String v, int p) {
+  private static String applyPrecision(String v, int p, boolean down) {
+    String nv = v;
+    int dp = -1;
+    if (nv.contains(".")) {
+      dp = nv.indexOf(".");
+      nv = nv.substring(0, dp)+nv.substring(dp+1);
+    }
+    String s = null;
     int d = p - getDecimalPrecision(v);
     if (d == 0) {
-      return v;
+      s = nv;
     } else if (d > 0) {
-      return v + padLeft("", '0', d);
+      s = nv + padLeft("", '0', d);
     } else {
-      if (v.charAt(v.length()+d) >= '6') {
-        return v.substring(0, v.length()+d-1)+((char) (v.charAt(v.length()+d)+1));
+      int l = v.length();
+      int ld = l+d;
+      if (dp > -1) {
+        ld--;
+      }
+      if (nv.charAt(ld) >= '5' && !down) {
+        s = nv.substring(0, ld-1)+((char) (nv.charAt(ld-1)+1));
       } else {
-        return v.substring(0, v.length()+d);
+        s = nv.substring(0, ld);
       }
     }
+    if (s.endsWith(".")) {
+      s = s.substring(0, s.length()-1);
+    }
+    return dp == -1 || dp >= s.length() ? s : s.substring(0, dp)+"."+s.substring(dp);
   }
 
   private static String minusOne(String value) {
@@ -1719,92 +1487,6 @@ public class Utilities {
     return s.toString();
   }
 
-  public static String lowBoundaryForDate(String value, int precision) {
-    String[] res = splitTimezone(value);
-    StringBuilder b = new StringBuilder(res[0]);
-    if (b.length() == 4) {
-      b.append("-01");
-    }
-    if (b.length() == 7) {
-      b.append("-01");
-    }
-    if (b.length() == 10) {
-      b.append("T00:00");
-    }
-    if (b.length() == 16) {
-      b.append(":00");
-    }
-    if (b.length() == 19) {
-      b.append(".000");
-    }
-    String tz;
-    if (precision <= 10) {
-      tz = "";
-    } else {
-      tz = Utilities.noString(res[1]) ? defLowTimezone(b.toString()) : res[1];
-    }
-    return applyDatePrecision(b.toString(), precision)+tz;
-  }
-
-  private static String defLowTimezone(String string) {
-    return "+14:00"; // Kiribati permanent timezone since 1994 and we don't worry about before then 
-  }
-
-  private static String defHighTimezone(String string) {
-    return "-12:00"; // Parts of Russia, Antarctica, Baker Island and Midway Atoll 
-  }
-
-  public static String lowBoundaryForTime(String value, int precision) {
-    String[] res = splitTimezone(value);
-    StringBuilder b = new StringBuilder(res[0]);
-    if (b.length() == 2) {
-      b.append(":00");
-    }
-    if (b.length() == 5) {
-      b.append(":00");
-    }
-    if (b.length() == 8) {
-      b.append(".000");
-    }
-    return applyTimePrecision(b.toString(), precision)+res[1];
-  }
-
-  public static String highBoundaryForTime(String value, int precision) {
-    String[] res = splitTimezone(value);
-    StringBuilder b = new StringBuilder(res[0]);
-    if (b.length() == 2) {
-      b.append(":59");
-    }
-    if (b.length() == 5) {
-      b.append(":59");
-    }
-    if (b.length() == 8) {
-      b.append(".999");
-    }
-    return applyTimePrecision(b.toString(), precision)+res[1];
-  }
-
-
-  private static Object applyDatePrecision(String v, int precision) {
-    switch (precision) {
-    case 4: return v.substring(0, 4);
-    case 6: return v.substring(0, 7);
-    case 8: return v.substring(0, 10);
-    case 14: return v.substring(0, 17);
-    case 17: return v;      
-    }
-    throw new FHIRException("Unsupported Date precision for boundary operation: "+precision);
-  }
-
-  private static Object applyTimePrecision(String v, int precision) {
-    switch (precision) {
-    case 2: return v.substring(0, 3);
-    case 4: return v.substring(0, 6);
-    case 6: return v.substring(0, 9);
-    case 9: return v;      
-    }
-    throw new FHIRException("Unsupported Time precision for boundary operation: "+precision);
-  }
 
   public static String highBoundaryForDecimal(String value, int precision) {
     if (Utilities.noString(value)) {
@@ -1815,65 +1497,20 @@ public class Utilities {
       value = value.substring(0, value.indexOf("e"));
     }
     if (isZero(value)) {
-      return applyPrecision("0.50000000000000000000000000000", precision);
+      return applyPrecision("0.50000000000000000000000000000", precision, false);
     } else if (value.startsWith("-")) {
       return "-"+lowBoundaryForDecimal(value.substring(1), precision)+(e == null ? "" : e);
     } else {
       if (value.contains(".")) {
-        return applyPrecision(value+"50000000000000000000000000000", precision)+(e == null ? "" : e);
+        return applyPrecision(value+"50000000000000000000000000000", precision, false)+(e == null ? "" : e);
       } else {
-        return applyPrecision(value+".50000000000000000000000000000", precision)+(e == null ? "" : e);
+        return applyPrecision(value+".50000000000000000000000000000", precision, false)+(e == null ? "" : e);
       }
     }
   }
 
   private static boolean isZero(String value) {
     return value.replace(".", "").replace("-", "").replace("0", "").length() == 0;
-  }
-
-  public static String highBoundaryForDate(String value, int precision) {
-    String[] res = splitTimezone(value);
-    StringBuilder b = new StringBuilder(res[0]);
-    if (b.length() == 4) {
-      b.append("-12");
-    }
-    if (b.length() == 7) {
-      b.append("-"+dayCount(Integer.parseInt(b.substring(0,4)), Integer.parseInt(b.substring(5,7))));
-    }
-    if (b.length() == 10) {
-      b.append("T23:59");
-    }
-    if (b.length() == 16) {
-      b.append(":59");
-    }
-    if (b.length() == 19) {
-      b.append(".999");
-    }
-    String tz;
-    if (precision <= 10) {
-      tz = "";
-    } else {
-      tz = Utilities.noString(res[1]) ? defHighTimezone(b.toString()) : res[1];
-    }
-    return applyDatePrecision(b.toString(), precision)+tz;
-  }
-
-  private static String dayCount(int y, int m) {
-    switch (m) {
-    case 1: return "31";
-    case 2: return ((y % 4 == 0) && (y % 400 == 0 || !(y % 100 == 0))) ? "29" : "28";
-    case 3: return "31";
-    case 4: return "30";
-    case 5: return "31";
-    case 6: return "30";
-    case 7: return "31";
-    case 8: return "31";
-    case 9: return "30";
-    case 10: return "31";
-    case 11: return "30";
-    case 12: return "31";
-    default: return "30"; // make the compiler happy
-    }
   }
 
   public static Integer getDecimalPrecision(String value) {
@@ -1887,33 +1524,6 @@ public class Utilities {
     }
   }
 
-
-  private static String[] splitTimezone(String value) {
-    String[] res = new String[2];
-
-    if (value.contains("+")) {
-      res[0] = value.substring(0, value.indexOf("+"));
-      res[1] = value.substring(value.indexOf("+"));
-    } else if (value.contains("-") && value.contains("T") && value.lastIndexOf("-") > value.indexOf("T")) {
-      res[0] = value.substring(0, value.lastIndexOf("-"));
-      res[1]  = value.substring(value.lastIndexOf("-"));
-    } else if (value.contains("Z")) {
-      res[0] = value.substring(0, value.indexOf("Z"));
-      res[1] = value.substring(value.indexOf("Z"));
-    } else {
-      res[0] = value;
-      res[1] = "";
-    }
-    return res;
-  }
-
-  public static Integer getDatePrecision(String value) {
-    return splitTimezone(value)[0].replace("-", "").replace("T", "").replace(":", "").replace(".", "").length();
-  }
-
-  public static Integer getTimePrecision(String value) {
-    return splitTimezone(value)[0].replace("T", "").replace(":", "").replace(".", "").length();
-  }
 
   public static String padInt(int i, int len) {
     return Utilities.padLeft(Integer.toString(i), ' ', len);
@@ -1955,55 +1565,12 @@ public class Utilities {
     return baseText + "\r\n" + derivedText.substring(3);
   }
 
-  public static void deleteEmptyFolders(File df) {
-    for (File f : df.listFiles()) {
-      if (f.isDirectory()) {
-        deleteEmptyFolders(f);
-      }
-    }
-    boolean empty = true;
-    for (File f : df.listFiles()) {
-      empty = false;
-      break;
-    }
-    if (empty) {
-      df.delete();
-    }
-  }
-
-  public static String getRelativePath(String root, String path) {
-    String res = path.substring(root.length());
-    if (res.startsWith(File.separator)) {
-      res = res.substring(1);
-    }
-    return res;
-  }
-
   public static String getRelativeUrlPath(String root, String path) {
     String res = path.substring(root.length());
     if (res.startsWith("/")) {
       res = res.substring(1);
     }
     return res;
-  }
-
-  public static List<String> listAllFiles(String path, List<String> ignoreList) {
-    List<String> res = new ArrayList<>();
-    addAllFiles(res, path, new File(path), ignoreList);
-    return res;
-  }
-
-  private static void addAllFiles(List<String> res, String root, File dir, List<String> ignoreList) {
-    for (File f : dir.listFiles()) {
-      if (ignoreList == null || !ignoreList.contains(f.getAbsolutePath())) {
-        if (f.isDirectory()) {
-          addAllFiles(res, root, f, ignoreList);
-        } else if (!f.getName().equals(".DS_Store")) {
-          res.add(getRelativePath(root, f.getAbsolutePath()));
-        }
-      }
-    }
-
   }
 
   public static boolean isValidCRName(String name) {
@@ -2145,42 +1712,12 @@ public class Utilities {
     return txt.split("\\r?\\n|\\r");
   }
 
-  public static boolean isIgnorableFile(File file) {
-    return Utilities.existsInList(file.getName(), ".DS_Store");
-  }
-
   public static String rightTrim(String s) {
     int i = s.length()-1;
     while (i > 0 && Character.isWhitespace(s.charAt(i))) {
       i--;
     }
     return i == 0 ? "" : s.substring(0, i+1);
-  }
-
-  public static void renameDirectory(String source, String dest) throws FHIRException, IOException {
-    File src = new File(source);
-    File dst = new File(dest);
-    if (!src.renameTo(dst)) {
-      int i = 0;
-      do {
-        try {
-          Thread.sleep(20);
-        } catch (Exception e) {
-          // nothing
-        }
-        System.gc();
-        i++;
-      } while (!src.renameTo(dst) && i < 10);
-      if (src.exists()) {
-        copyDirectory(source, dest, null);
-        try {
-          src.delete();	
-        } catch (Exception e) {
-          // nothing
-        }
-      }
-    }
-
   }
 
   public static String urlTail(String url) {
@@ -2226,4 +1763,85 @@ public class Utilities {
     return true;
   }
 
+  public static String stripEoln(String text) {
+    if (text == null) {
+      return "";
+    }
+    return text.replace("\r\n",  " ").replace("\n",  " ").replace("\r",  " ");
+  }
+
+  public static String extractDomain(String source) {
+    try {
+      URI uri = URI.create(source);
+      return uri.getHost();
+    } catch (Exception e) {
+      return "??";
+    }
+  }
+
+  public static boolean isValidHtmlAnchorChar(char c) {
+    if ( (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+      return true;
+    } 
+    switch (c) {
+    case '!':
+    case '$':
+    case '&':
+    case '\'':
+    case '(':
+    case ')':
+    case '*':
+    case '+':
+    case ',':
+    case ';':
+    case '=':
+    case '.':
+    case '_':
+    case '-':
+    case '~':
+    case ':':
+    case '@':
+    case '/':
+    case '?':
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  public static boolean listValueStartsWith(String s, Set<String> list) {
+    if (s == null || list == null) {
+      return false;
+    }
+    for (String l : list) {
+      if (l.startsWith(s)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static String extractByRegex(String input, String regex) {
+    Pattern pattern = Pattern.compile(regex);
+    Matcher matcher = pattern.matcher(input);
+
+    StringBuilder result = new StringBuilder();
+    while (matcher.find()) {
+      result.append(matcher.group(1)); 
+    }
+    return result.length() == 0 ? null : result.toString(); 
+  }
+
+  public static String getDirectoryForURL(String url) {
+    return url.contains("/") && url.lastIndexOf("/") > 10 ? url.substring(0, url.lastIndexOf("/")) : url;
+  }
+
+  public static List<String> copyAdd(List<String> oldList, String newItem) {
+    List<String> newList = new ArrayList<>(oldList);
+    newList.add(newItem);
+    return newList;
+  }
+
+
+  
 }

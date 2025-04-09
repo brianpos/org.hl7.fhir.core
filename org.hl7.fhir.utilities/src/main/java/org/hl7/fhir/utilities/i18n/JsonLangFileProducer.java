@@ -6,15 +6,16 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.json.parser.JsonParser;
 
 public class JsonLangFileProducer extends LanguageFileProducer {
 
-  public JsonLangFileProducer(String folder) {
-    super(folder);
+  public JsonLangFileProducer(String rootFolder, String folderName, boolean useLangFolder) {
+    super(rootFolder, folderName, useLangFolder);
   }
 
   public JsonLangFileProducer() {
@@ -48,7 +49,7 @@ public class JsonLangFileProducer extends LanguageFileProducer {
 
     @Override
     public void finish() throws IOException {
-      FileOutputStream fs = new FileOutputStream(getFileName(id, baseLang));
+      FileOutputStream fs = ManagedFileAccess.outStream(getFileName(id, baseLang));
       try {
         JsonParser.compose(json, fs);
       } finally {
@@ -79,8 +80,8 @@ public class JsonLangFileProducer extends LanguageFileProducer {
       JsonObject entry = new JsonObject();
       json.forceArray("entries").add(entry);
       entry.add("id", unit.getId());
-      if (unit.getContext1() != null) {
-        entry.add("context", unit.getContext1());
+      if (unit.getContext() != null) {
+        entry.add("context", unit.getContext());
       }
       entry.add("source", unit.getSrcText());
       entry.add("target", unit.getTgtText());
@@ -102,7 +103,7 @@ public class JsonLangFileProducer extends LanguageFileProducer {
   }
 
   private String getFileName(String id, String baseLang) throws IOException {
-    return Utilities.path(getFolder(), id+"-"+baseLang+".json");
+    return Utilities.path(getRootFolder(), getFolderName(), id+"-"+baseLang+".json");
   }
 
   @Override
@@ -126,13 +127,16 @@ public class JsonLangFileProducer extends LanguageFileProducer {
       JsonObject entry = new JsonObject();
       lj.forceArray("entries").add(entry);
       entry.add("id", tu.getId());
-      if (tu.getContext1() != null) { 
-        entry.add("context", tu.getContext1());
+      if (tu.getContext() != null) { 
+        entry.add("context", tu.getContext());
+      }
+      if (tu.getOriginal() != null) {
+        entry.add("original", tu.getOriginal());
       }
       entry.add("source", tu.getSrcText());
       entry.add("target", tu.getTgtText());
     }
-    TextFile.stringToFile(JsonParser.compose(json, true), Utilities.path(getFolder(), filename));
+    FileUtilities.stringToFile(JsonParser.compose(json, true), getTargetFileName(targetLang, filename));
   }
 
 }

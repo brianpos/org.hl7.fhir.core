@@ -1,8 +1,6 @@
 package org.hl7.fhir.r5.context;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,15 +20,20 @@ import org.hl7.fhir.r5.model.CodeSystem.ConceptPropertyComponent;
 import org.hl7.fhir.r5.model.ElementDefinition.ElementDefinitionBindingComponent;
 import org.hl7.fhir.r5.model.NamingSystem.NamingSystemIdentifierType;
 import org.hl7.fhir.r5.model.NamingSystem.NamingSystemUniqueIdComponent;
+import org.hl7.fhir.r5.model.Parameters.ParametersParameterComponent;
 import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionKind;
 import org.hl7.fhir.r5.model.StructureDefinition.TypeDerivationRule;
 import org.hl7.fhir.r5.model.StructureMap;
 import org.hl7.fhir.r5.utils.ToolingExtensions;
+import org.hl7.fhir.r5.utils.UserDataNames;
 import org.hl7.fhir.r5.utils.XVerExtensionManager;
 import org.hl7.fhir.r5.model.Identifier;
 import org.hl7.fhir.r5.model.NamingSystem;
+import org.hl7.fhir.r5.model.Parameters;
+import org.hl7.fhir.r5.model.Resource;
 import org.hl7.fhir.r5.model.StructureDefinition;
-import org.hl7.fhir.utilities.OIDUtils;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
+import org.hl7.fhir.utilities.OIDUtilities;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
@@ -38,6 +41,7 @@ import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueType;
 import org.hl7.fhir.utilities.validation.ValidationMessage.Source;
 
+@MarkedToMoveToAdjunctPackage
 public class ContextUtilities implements ProfileKnowledgeProvider {
 
   private IWorkerContext context;
@@ -47,6 +51,7 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
   private List<StructureDefinition> allStructuresList = new ArrayList<StructureDefinition>();
   private List<String> canonicalResourceNames;
   private List<String> concreteResourceNames;
+  private Set<String> concreteResourceNameSet;
   
   public ContextUtilities(IWorkerContext context) {
     super();
@@ -69,7 +74,7 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
       return oidCache.get(oid);
     }
 
-    String uri = OIDUtils.getUriForOid(oid);
+    String uri = OIDUtilities.getUriForOid(oid);
     if (uri != null) {
       oidCache.put(oid, uri);
       return uri;
@@ -219,7 +224,7 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
         if (!set.contains(sd)) {
           try {
             generateSnapshot(sd);
-            // new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(Utilities.path("[tmp]", "snapshot", tail(sd.getUrl())+".xml")), sd);
+            // new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(Utilities.path("[tmp]", "snapshot", tail(sd.getUrl())+".xml")), sd);
           } catch (Exception e) {
             if (!isSuppressDebugMessages()) {
               System.out.println("Unable to generate snapshot @2 for "+tail(sd.getUrl()) +" from "+tail(sd.getBaseDefinition())+" because "+e.getMessage());
@@ -277,7 +282,7 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
       for (String err : errors) {
         msgs.add(new ValidationMessage(Source.ProfileValidator, IssueType.EXCEPTION, p.getWebPath(), "Error sorting Differential: "+err, ValidationMessage.IssueSeverity.ERROR));
       }
-      pu.generateSnapshot(sd, p, p.getUrl(), sd.getUserString("webroot"), p.getName());
+      pu.generateSnapshot(sd, p, p.getUrl(), sd.getUserString(UserDataNames.render_webroot), p.getName());
       for (ValidationMessage msg : msgs) {
         if ((!ProfileUtilities.isSuppressIgnorableExceptions() && msg.getLevel() == ValidationMessage.IssueSeverity.ERROR) || msg.getLevel() == ValidationMessage.IssueSeverity.FATAL) {
           if (!msg.isIgnorableError()) {
@@ -297,9 +302,9 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
 
   // work around the fact that some Implementation guides were published with old snapshot generators that left invalid snapshots behind.
   private boolean isProfileNeedsRegenerate(StructureDefinition p) {
-    boolean needs = !p.hasUserData("hack.regnerated") && Utilities.existsInList(p.getUrl(), "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaireresponse");
+    boolean needs = !p.hasUserData(UserDataNames.SNAPSHOT_regeneration_tracker) && Utilities.existsInList(p.getUrl(), "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaireresponse");
     if (needs) {
-      p.setUserData("hack.regnerated", "yes");
+      p.setUserData(UserDataNames.SNAPSHOT_regeneration_tracker, "yes");
     }
     return needs;
   }
@@ -317,6 +322,9 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
 
   @Override
   public boolean isResource(String t) {
+    if (getConcreteResourceSet().contains(t)) {
+      return true;
+    }
     StructureDefinition sd;
     try {
       sd = context.fetchResource(StructureDefinition.class, "http://hl7.org/fhir/StructureDefinition/"+t);
@@ -362,7 +370,11 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
   public StructureDefinition fetchByJsonName(String key) {
     for (StructureDefinition sd : context.fetchResourcesByType(StructureDefinition.class)) {
       ElementDefinition ed = sd.getSnapshot().getElementFirstRep();
-      if (sd.getKind() == StructureDefinitionKind.LOGICAL && ed != null && ed.hasExtension(ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_NAME_DEPRECATED) && 
+      if (/*sd.getKind() == StructureDefinitionKind.LOGICAL && */ 
+          // this is turned off because it's valid to use a FHIR type directly in
+          // an extension of this kind, and that can't be a logical model. Any profile on
+          // a type is acceptable as long as it has the json name on it  
+          ed != null && ed.hasExtension(ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_NAME_DEPRECATED) && 
           key.equals(ToolingExtensions.readStringExtension(ed, ToolingExtensions.EXT_JSON_NAME, ToolingExtensions.EXT_JSON_NAME_DEPRECATED))) {
         return sd;
       }
@@ -370,16 +382,22 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
     return null;
   }
 
-  public List<String>  getConcreteResources() {
-    if (concreteResourceNames == null) {
-      concreteResourceNames =  new ArrayList<>();
-      Set<String> names = new HashSet<>();
-      for (StructureDefinition sd : allStructures()) {
-        if (sd.getKind() == StructureDefinitionKind.RESOURCE && !sd.getAbstract()) {
-          names.add(sd.getType());
+  public Set<String> getConcreteResourceSet() {
+    if (concreteResourceNameSet == null) {
+      concreteResourceNameSet =  new HashSet<>();
+      for (StructureDefinition sd : getStructures()) {
+        if (sd.getKind() == StructureDefinitionKind.RESOURCE && !sd.getAbstract() && sd.getDerivation() == TypeDerivationRule.SPECIALIZATION) {
+          concreteResourceNameSet.add(sd.getType());
         }
       }
-      concreteResourceNames.addAll(Utilities.sorted(names));
+    }
+    return concreteResourceNameSet;
+  }
+
+  public List<String> getConcreteResources() {
+    if (concreteResourceNames == null) {
+      concreteResourceNames =  new ArrayList<>();
+      concreteResourceNames.addAll(Utilities.sorted(getConcreteResourceSet()));
     }
     return concreteResourceNames;
   }
@@ -441,6 +459,71 @@ public class ContextUtilities implements ProfileKnowledgeProvider {
       return sd.getAbstract();
     }
     return false;
+  }
+
+  public boolean isDomainResource(String typeName) {
+    StructureDefinition sd = context.fetchTypeDefinition(typeName);
+    while (sd != null) {
+      if ("DomainResource".equals(sd.getType())) {
+        return true;
+      }
+      sd = context.fetchResource(StructureDefinition.class, sd.getBaseDefinition());  
+    }
+    return false;
+  }
+
+  public IWorkerContext getWorker() {
+    return context;     
+  }
+
+  @Override
+  public String getCanonicalForDefaultContext() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  public String pinValueSet(String valueSet) {
+    return pinValueSet(valueSet, context.getExpansionParameters());
+  }
+
+  public String pinValueSet(String value, Parameters expParams) {
+    if (value.contains("|")) {
+      return value;
+    }
+    for (ParametersParameterComponent p : expParams.getParameter()) {
+      if ("default-valueset-version".equals(p.getName())) {
+        String s = p.getValue().primitiveValue();
+        if (s.startsWith(value+"|")) {
+          return s;
+        }
+      }
+    }
+    return value;
+  }
+
+  public List<StructureDefinition> allBaseStructures() {
+    List<StructureDefinition> res = new ArrayList<>();
+    for (StructureDefinition sd : allStructures()) {
+      if (sd.getDerivation() == TypeDerivationRule.SPECIALIZATION && sd.getKind() != StructureDefinitionKind.LOGICAL) {
+        res.add(sd);
+      }
+    }
+    return res;
+  }
+
+  public <T extends Resource> List<T> fetchByIdentifier(Class<T> class_, String system) {
+    List<T> list = new ArrayList<>();
+    for (T t : context.fetchResourcesByType(class_)) {
+      if (t instanceof CanonicalResource) {
+        CanonicalResource cr = (CanonicalResource) t;
+        for (Identifier id : cr.getIdentifier()) {
+          if (system.equals(id.getValue())) {
+            list.add(t);
+          }
+        }
+      }
+    }
+    return list;
   }
 
 }

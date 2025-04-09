@@ -12,7 +12,9 @@ import org.hl7.fhir.r5.model.CapabilityStatement;
 import org.hl7.fhir.r5.model.Resource;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.utils.EOperationOutcome;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.i18n.RenderingI18nContext;
 import org.hl7.fhir.validation.ValidationEngine;
 import org.hl7.fhir.validation.cli.utils.Params;
 
@@ -60,17 +62,13 @@ public class ComparisonService {
 
   public static void compareStructureDefinitions(String dest, ValidationEngine validator, String left, String right, StructureDefinition resLeft, StructureDefinition resRight) throws IOException, FHIRException, EOperationOutcome {
     System.out.println("Comparing StructureDefinitions " + left + " to " + right);
-    ComparisonSession session = new ComparisonSession(validator.getContext(), validator.getContext(), "Comparing Profiles", null, null);
+    ComparisonSession session = new ComparisonSession(new RenderingI18nContext(), validator.getContext(), validator.getContext(), "Comparing Profiles", null, null);
     session.compare(resLeft, resRight);
     
     System.out.println("Generating output to " + dest + "...");
-    Utilities.createDirectory(dest);
+    FileUtilities.createDirectory(dest);
     ComparisonRenderer cr = new ComparisonRenderer(validator.getContext(), validator.getContext(), dest, session);
-    cr.getTemplates().put("CodeSystem", new String(validator.getContext().getBinaryForKey("template-comparison-CodeSystem.html")));
-    cr.getTemplates().put("ValueSet", new String(validator.getContext().getBinaryForKey("template-comparison-ValueSet.html")));
-    cr.getTemplates().put("Profile", new String(validator.getContext().getBinaryForKey("template-comparison-Profile.html")));
-    cr.getTemplates().put("Index", new String(validator.getContext().getBinaryForKey("template-comparison-index.html")));
-    cr.getTemplates().put("CapabilityStatement", new String(validator.getContext().getBinaryForKey("template-comparison-CapabilityStatement.html")));
+    cr.loadTemplates(validator.getContext());
     File htmlFile = cr.render(left, right);
     Desktop.getDesktop().browse(htmlFile.toURI());
     System.out.println("Done");

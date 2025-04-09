@@ -405,6 +405,16 @@ public class TypeDetails {
     result.types.addAll(types);
     return result;
   }
+  public TypeDetails toOrdered() {
+    TypeDetails result = new TypeDetails(CollectionStatus.ORDERED);
+    result.types.addAll(types);
+    return result;
+  }
+  public TypeDetails toUnordered() {
+    TypeDetails result = new TypeDetails(CollectionStatus.UNORDERED);
+    result.types.addAll(types);
+    return result;
+  }
   public CollectionStatus getCollectionStatus() {
     return collectionStatus;
   }
@@ -584,6 +594,18 @@ public class TypeDetails {
   }
   public boolean isChoice() {
     return choice;
+  }
+  public boolean isEmpty() {
+    return types.isEmpty();
+  }
+  public List<String> getProfiles(String t) {
+    t = ProfiledType.ns(t);
+    for (ProfiledType pt : types) {
+      if (t.equals(pt.uri)) {
+        return pt.getProfiles();
+      }
+    }
+    return new ArrayList<String>();
   }
   
 }

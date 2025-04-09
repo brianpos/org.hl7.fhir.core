@@ -9,7 +9,9 @@ import org.hl7.fhir.r5.context.IWorkerContext;
 import org.hl7.fhir.r5.formats.XmlParser;
 import org.hl7.fhir.r5.model.Resource;
 import org.hl7.fhir.r5.test.utils.TestingUtilities;
+import org.hl7.fhir.r5.Constants;
 import org.hl7.fhir.utilities.FhirPublication;
+import org.hl7.fhir.utilities.i18n.I18nConstants;
 import org.hl7.fhir.utilities.settings.FhirSettings;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.validation.instance.InstanceValidator;
@@ -19,24 +21,24 @@ import org.junit.jupiter.api.Test;
 
 public class ResourceValidationTests {
 
-
   private static IWorkerContext ctxt;
   private static ValidationEngine engine;
   private static InstanceValidator val;
 
 
-  private void runTest(String filename) throws IOException, FileNotFoundException, Exception {
+  private List<ValidationMessage> runTest(String filename) throws IOException, FileNotFoundException, Exception {
     TestingUtilities.injectCorePackageLoader();
     if (val == null) {
       ctxt = TestingUtilities.getSharedWorkerContext();
-      engine = TestUtilities.getValidationEngine("hl7.fhir.r5.core#5.0.0", FhirSettings.getTxFhirDevelopment(), null, FhirPublication.R5, true, "5.0.0");
+      engine = TestUtilities.getValidationEngine("hl7.fhir.r5.core#5.0.0", FhirSettings.getTxFhirDevelopment(), null, FhirPublication.R5, true, "5.0.0", false, Constants.THO_WORKING_VERSION, Constants.EXTENSIONS_WORKING_VERSION);
       val = engine.getValidator(null);
-      val.setDebug(false);
+      val.getSettings().setDebug(false);
     }
     List<ValidationMessage> errors = new ArrayList<>();
     Resource res = (Resource) new XmlParser().parse(TestingUtilities.loadTestResourceStream("r5", filename));
     val.validate(val, errors, res);
     Assertions.assertNotNull(errors);
+    return errors;
   }
 
 
@@ -122,5 +124,4 @@ public class ResourceValidationTests {
     runTest("codesystem-example.xml");
   }
 
-  
 }

@@ -16,7 +16,7 @@ import org.hl7.fhir.{{jid}}.formats.XmlParser;
 import org.hl7.fhir.{{jid}}.model.DomainResource;
 import org.hl7.fhir.{{jid}}.model.Resource;
 import org.hl7.fhir.{{jid}}.test.utils.TestingUtilities;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.junit.Test;
@@ -33,7 +33,7 @@ public class RoundTripTests {
 
   @Parameters(name = "{index}: file {0}")
   public static Iterable<Object[]> data() throws ParserConfigurationException, SAXException, IOException {
-    File dir = new File(EXAMPLES_DIR);
+    File dir = ManagedFileAccess.file(EXAMPLES_DIR);
 
     String[] list = dir.list();
     List<Object[]> objects = new ArrayList<Object[]>(list.length);
@@ -52,7 +52,7 @@ public class RoundTripTests {
   
   @Test
   public void test() throws FileNotFoundException, IOException {
-    byte[] src = TextFile.fileToBytes(Utilities.path(EXAMPLES_DIR, name));
+    byte[] src = FileUtilities.fileToBytes(Utilities.path(EXAMPLES_DIR, name));
     Resource r = new XmlParser().parse(src);
     assertNotNull(r);
     byte[] cnt = new XmlParser().setOutputStyle(OutputStyle.PRETTY).composeBytes(r);
@@ -77,11 +77,11 @@ public class RoundTripTests {
   }
 
   private void save(byte[] src, String path) throws IOException {
-    File f = new File(path);
+    File f = ManagedFileAccess.file(path);
     if (f.exists()) {
       f.delete();
     }
-    TextFile.bytesToFile(src, f);
+    FileUtilities.bytesToFile(src, f);
 
     
   }

@@ -37,6 +37,7 @@ import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.exceptions.FHIRFormatError;
 import org.hl7.fhir.exceptions.PathEngineException;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,6 +45,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @Disabled
+@Deprecated
 public class SnapShotGenerationTests {
 
   private static FHIRPathEngine fp;
@@ -89,7 +91,7 @@ public class SnapShotGenerationTests {
     context.fixtures.put(op.getResponseId(), output);
     context.snapshots.put(output.getUrl(), output);
 
-    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(Utilities.path(Utilities.path("[tmp]"), op.getResponseId() + ".xml")), output);
+    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(Utilities.path(Utilities.path("[tmp]"), op.getResponseId() + ".xml")), output);
     //ok, now the asserts:
     for (int i = 1; i < test.getAction().size(); i++) {
       SetupActionAssertComponent a = test.getAction().get(i).getAssert();

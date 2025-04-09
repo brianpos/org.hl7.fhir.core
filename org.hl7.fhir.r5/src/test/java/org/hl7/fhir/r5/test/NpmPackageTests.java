@@ -10,7 +10,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.hl7.fhir.r5.test.utils.TestingUtilities;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.npm.NpmPackage;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -21,8 +23,8 @@ public class NpmPackageTests {
   public void testOldFolder() throws IOException {
     // extract the test
     String dst = Utilities.path("[tmp]", "npm", "test.format.old");
-    Utilities.clearDirectory(dst);
-    unzip(TestingUtilities.loadTestResourceStream("npm", "test.format.old.zip"), new File(dst));
+    FileUtilities.clearDirectory(dst);
+    unzip(TestingUtilities.loadTestResourceStream("npm", "test.format.old.zip"), ManagedFileAccess.file(dst));
     dst = Utilities.path(dst, "test.format.old");
     NpmPackage npm = NpmPackage.fromFolder(dst);
     checkNpm(npm);
@@ -32,8 +34,8 @@ public class NpmPackageTests {
   public void testNewFolder() throws IOException {
     // extract the test
     String dst = Utilities.path("[tmp]", "npm", "test.format.new");
-    Utilities.clearDirectory(dst);
-    unzip(TestingUtilities.loadTestResourceStream("npm", "test.format.new.zip"), new File(dst));
+    FileUtilities.clearDirectory(dst);
+    unzip(TestingUtilities.loadTestResourceStream("npm", "test.format.new.zip"), ManagedFileAccess.file(dst));
     dst = Utilities.path(dst, "test.format.new");
     NpmPackage npm = NpmPackage.fromFolder(dst);
     checkNpm(npm);
@@ -69,7 +71,7 @@ public class NpmPackageTests {
   }
 
   private static void unzip(InputStream source, File destDir) throws IOException {
-    Utilities.createDirectory(destDir.getAbsolutePath());
+    FileUtilities.createDirectory(destDir.getAbsolutePath());
 
     byte[] buffer = new byte[1024];
     ZipInputStream zis = new ZipInputStream(source);
@@ -77,9 +79,9 @@ public class NpmPackageTests {
     while (zipEntry != null) {
       File newFile = newFile(destDir, zipEntry);
       if (zipEntry.isDirectory()) {
-        Utilities.createDirectory(newFile.getAbsolutePath());
+        FileUtilities.createDirectory(newFile.getAbsolutePath());
       } else {
-        FileOutputStream fos = new FileOutputStream(newFile);
+        FileOutputStream fos = ManagedFileAccess.outStream(newFile);
         int len;
         while ((len = zis.read(buffer)) > 0) {
           fos.write(buffer, 0, len);
@@ -93,7 +95,7 @@ public class NpmPackageTests {
   }
 
   public static File newFile(File destinationDir, ZipEntry zipEntry) throws IOException {
-    File destFile = new File(destinationDir, zipEntry.getName());
+    File destFile = ManagedFileAccess.file(Utilities.path(destinationDir.getAbsolutePath(), zipEntry.getName()));
     String destDirPath = destinationDir.getCanonicalPath();
     String destFilePath = destFile.getCanonicalPath();
     if (!destFilePath.startsWith(destDirPath + File.separator)) {

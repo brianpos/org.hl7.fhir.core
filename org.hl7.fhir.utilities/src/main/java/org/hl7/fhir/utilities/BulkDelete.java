@@ -35,6 +35,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
+
 public class BulkDelete {
 
 
@@ -51,9 +53,9 @@ public class BulkDelete {
   }
 
   public static void exec(String d, String pattern) throws FileNotFoundException, IOException {
-    for (File f : new File(d).listFiles()) {
+    for (File f : ManagedFileAccess.file(d).listFiles()) {
       if (!f.isDirectory()) {
-        String s = TextFile.fileToString(f);
+        String s = FileUtilities.fileToString(f);
         if (s.contains(pattern)) {
           System.out.println("delete "+f.getAbsolutePath());
           f.delete();

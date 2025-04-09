@@ -60,6 +60,7 @@ import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionContextCompo
 import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionMappingComponent;
 import org.hl7.fhir.r5.model.UriType;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.TextStreamWriter;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTAutoFilter;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTCustomFilter;
@@ -69,6 +70,7 @@ import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTFilters;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.STFilterOperator;
 
 
+@MarkedToMoveToAdjunctPackage
 public class StructureDefinitionSpreadsheetGenerator extends CanonicalSpreadsheetGenerator {
   private XmlParser xml = new XmlParser();
   private JsonParser json = new JsonParser();
@@ -135,7 +137,7 @@ public class StructureDefinitionSpreadsheetGenerator extends CanonicalSpreadshee
 
   private void addStructureDefinitionMetadata(Sheet sheet, StructureDefinition sd) {
     for (Coding k : sd.getKeyword()) {
-      addMetadataRow(sheet, "Keyword", dr.display(k));
+      addMetadataRow(sheet, "Keyword", dr.displayDataType(k));
     }
     addMetadataRow(sheet, "FHIR Version", sd.getFhirVersionElement().asStringValue());
     addMetadataRow(sheet, "Kind", sd.getKindElement().asStringValue());
@@ -397,6 +399,14 @@ public class StructureDefinitionSpreadsheetGenerator extends CanonicalSpreadshee
     if (sheet.getLastRowNum() > 0) {
       sheet.setActiveCell(new CellAddress(sheet.getRow(1).getCell(0)));
     }
+  }
+
+  public void dump() {
+    super.dump();
+    xml = null;
+    json = null;
+    mapKeys = null;
+    
   }
 
 }

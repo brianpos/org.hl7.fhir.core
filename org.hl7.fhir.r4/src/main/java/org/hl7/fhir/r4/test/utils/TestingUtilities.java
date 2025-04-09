@@ -50,14 +50,17 @@ import org.fhir.ucum.UcumEssenceService;
 import org.hl7.fhir.r4.context.IWorkerContext;
 import org.hl7.fhir.r4.context.SimpleWorkerContext;
 import org.hl7.fhir.r4.model.Parameters;
-import org.hl7.fhir.utilities.CSFile;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.CSFile;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager;
 import org.hl7.fhir.utilities.settings.FhirSettings;
 import org.hl7.fhir.utilities.tests.BaseTestingUtilities;
 import org.hl7.fhir.utilities.tests.ResourceLoaderTests;
 import org.hl7.fhir.utilities.tests.TestConfig;
+import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -70,6 +73,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
 
+@MarkedToMoveToAdjunctPackage
 public class TestingUtilities {
   private static final boolean SHOW_DIFF = false;
 
@@ -97,14 +101,14 @@ public class TestingUtilities {
   static public String fixedpath;
   static public String contentpath;
 
-  public static String home() {
+  public static String home() throws IOException {
     if (fixedpath != null)
       return fixedpath;
     String s = System.getenv("FHIR_HOME");
     if (!Utilities.noString(s))
       return s;
     s = "C:\\work\\org.hl7.fhir\\build";
-    if (new File(s).exists())
+    if (ManagedFileAccess.file(s).exists())
       return s;
     throw new Error("FHIR Home directory not configured");
   }
@@ -113,20 +117,20 @@ public class TestingUtilities {
     if (contentpath != null)
       return contentpath;
     String s = "R:\\fhir\\publish";
-    if (new File(s).exists())
+    if (ManagedFileAccess.file(s).exists())
       return s;
     return Utilities.path(home(), "publish");
   }
 
   // diretory that contains all the US implementation guides
-  public static String us() {
+  public static String us() throws IOException {
     if (fixedpath != null)
       return fixedpath;
     String s = System.getenv("FHIR_HOME");
     if (!Utilities.noString(s))
       return s;
     s = "C:\\work\\org.hl7.fhir.us";
-    if (new File(s).exists())
+    if (ManagedFileAccess.file(s).exists())
       return s;
     throw new Error("FHIR US directory not configured");
   }
@@ -144,7 +148,7 @@ public class TestingUtilities {
       command.add("\"" + diff + "\" \"" + f1 + "\" \"" + f2 + "\"");
 
       ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new CSFile(Utilities.path("[tmp]")));
+      builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
       builder.start();
 
     }
@@ -251,11 +255,11 @@ public class TestingUtilities {
   }
 
   private static Document loadXml(String fn) throws Exception {
-    return loadXml(new FileInputStream(fn));
+    return loadXml(ManagedFileAccess.inStream(fn));
   }
 
   private static Document loadXml(InputStream fn) throws Exception {
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    DocumentBuilderFactory factory = XMLUtil.newXXEProtectedDocumentBuilderFactory();
     factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
     factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
     factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
@@ -281,10 +285,10 @@ public class TestingUtilities {
       if (System.getProperty("os.name").contains("Linux"))
         diff = Utilities.path("/", "usr", "bin", "meld");
       else {
-        if (Utilities.checkFile("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge"),
+        if (FileUtilities.checkFileExists("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge"),
             "\\WinMergeU.exe", null))
           diff = Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge", "WinMergeU.exe");
-        else if (Utilities.checkFile("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "Meld"),
+        else if (FileUtilities.checkFileExists("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "Meld"),
             "\\Meld.exe", null))
           diff = Utilities.path(System.getenv("ProgramFiles(X86)"), "Meld", "Meld.exe");
       }
@@ -294,8 +298,8 @@ public class TestingUtilities {
       List<String> command = new ArrayList<String>();
       String f1 = Utilities.path("[tmp]", "input" + s1.hashCode() + ".json");
       String f2 = Utilities.path("[tmp]", "output" + s2.hashCode() + ".json");
-      TextFile.stringToFile(s1, f1);
-      TextFile.stringToFile(s2, f2);
+      FileUtilities.stringToFile(s1, f1);
+      FileUtilities.stringToFile(s2, f2);
       command.add(diff);
       if (diff.toLowerCase().contains("meld"))
         command.add("--newtab");
@@ -303,7 +307,7 @@ public class TestingUtilities {
       command.add(f2);
 
       ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new CSFile(Utilities.path("[tmp]")));
+      builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
       builder.start();
 
     }
@@ -319,7 +323,7 @@ public class TestingUtilities {
       command.add("\"" + diff + "\" \"" + f1 + "\" \"" + f2 + "\"");
 
       ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new CSFile(Utilities.path("[tmp]")));
+      builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
       builder.start();
 
     }
@@ -335,8 +339,8 @@ public class TestingUtilities {
 
   private static String compareJson(String f1, String f2)
       throws JsonSyntaxException, FileNotFoundException, IOException {
-    JsonObject o1 = (JsonObject) new com.google.gson.JsonParser().parse(TextFile.fileToString(f1));
-    JsonObject o2 = (JsonObject) new com.google.gson.JsonParser().parse(TextFile.fileToString(f2));
+    JsonObject o1 = (JsonObject) new com.google.gson.JsonParser().parse(FileUtilities.fileToString(f1));
+    JsonObject o2 = (JsonObject) new com.google.gson.JsonParser().parse(FileUtilities.fileToString(f2));
     return compareObjects("", o1, o2);
   }
 
@@ -419,10 +423,10 @@ public class TestingUtilities {
       if (System.getProperty("os.name").contains("Linux"))
         diff = Utilities.path("/", "usr", "bin", "meld");
       else {
-        if (Utilities.checkFile("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge"),
+        if (FileUtilities.checkFileExists("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge"),
             "\\WinMergeU.exe", null))
           diff = Utilities.path(System.getenv("ProgramFiles(X86)"), "WinMerge", "WinMergeU.exe");
-        else if (Utilities.checkFile("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "Meld"),
+        else if (FileUtilities.checkFileExists("WinMerge", Utilities.path(System.getenv("ProgramFiles(X86)"), "Meld"),
             "\\Meld.exe", null))
           diff = Utilities.path(System.getenv("ProgramFiles(X86)"), "Meld", "Meld.exe");
       }
@@ -432,8 +436,8 @@ public class TestingUtilities {
       List<String> command = new ArrayList<String>();
       String f1 = Utilities.path("[tmp]", "input" + s1.hashCode() + ".json");
       String f2 = Utilities.path("[tmp]", "output" + s2.hashCode() + ".json");
-      TextFile.stringToFile(s1, f1);
-      TextFile.stringToFile(s2, f2);
+      FileUtilities.stringToFile(s1, f1);
+      FileUtilities.stringToFile(s2, f2);
       command.add(diff);
       if (diff.toLowerCase().contains("meld"))
         command.add("--newtab");
@@ -441,7 +445,7 @@ public class TestingUtilities {
       command.add(f2);
 
       ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new CSFile(Utilities.path("[tmp]")));
+      builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
       builder.start();
 
     }
@@ -464,8 +468,8 @@ public class TestingUtilities {
     return resourceNameToFile(null, name);
   }
 
-  private static boolean fileForPathExists(String path) {
-    return new File(path).exists();
+  private static boolean fileForPathExists(String path) throws IOException {
+    return ManagedFileAccess.file(path).exists();
   }
 
   public static String generateResourcePath(String subFolder, String name) throws IOException {
@@ -510,10 +514,10 @@ public class TestingUtilities {
     if (dir == null && FhirSettings.hasFhirTestCasesPath()) {
       dir = FhirSettings.getFhirTestCasesPath();
     }
-    if (dir != null && new CSFile(dir).exists()) {
+    if (dir != null && ManagedFileAccess.csfile(dir).exists()) {
       String n = Utilities.path(dir, Utilities.path(paths));
       // ok, we'll resolve this locally
-      return TextFile.fileToString(new CSFile(n));
+      return FileUtilities.fileToString(ManagedFileAccess.csfile(n));
     } else {
       // resolve from the package
       String contents;

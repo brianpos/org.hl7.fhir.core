@@ -7,6 +7,7 @@ import org.hl7.fhir.dstu2016may.utils.NarrativeGenerator;
 import org.hl7.fhir.dstu2016may.utils.SimpleWorkerContext;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.io.IOException;
 
 @Disabled
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Deprecated
 public class NarrativeGeneratorTests {
 
   private NarrativeGenerator gen;
@@ -41,9 +43,9 @@ public class NarrativeGeneratorTests {
   private void process(String path)
       throws FileNotFoundException, IOException, XmlPullParserException, EOperationOutcome, FHIRException {
     XmlParser p = new XmlParser();
-    DomainResource r = (DomainResource) p.parse(new FileInputStream(path));
+    DomainResource r = (DomainResource) p.parse(ManagedFileAccess.inStream(path));
     gen.generate(r);
-    FileOutputStream s = new FileOutputStream(Utilities.path("[tmp]", "gen.xml"));
+    FileOutputStream s = ManagedFileAccess.outStream(Utilities.path("[tmp]", "gen.xml"));
     new XmlParser().compose(s, r, true);
     s.close();
   }

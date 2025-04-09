@@ -7,13 +7,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 
 public class BOMRemover {
 
   public static void main(String[] args) throws FileNotFoundException, IOException {
-    new BOMRemover().execute(new File(args[0]));
+    new BOMRemover().execute(ManagedFileAccess.file(args[0]));
 
   }
 
@@ -27,7 +28,7 @@ public class BOMRemover {
       String s = Utilities.stripBOM(src);
       if (!s.equals(src)) {
         System.out.println("Remove BOM from "+f.getAbsolutePath());
-        TextFile.stringToFile(s, f);
+        FileUtilities.stringToFile(s, f);
       }
     }
   }

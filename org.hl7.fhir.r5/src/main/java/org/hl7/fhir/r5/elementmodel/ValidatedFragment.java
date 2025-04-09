@@ -5,8 +5,11 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.Setter;
+
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 
+@MarkedToMoveToAdjunctPackage
 public class ValidatedFragment {
 
   @Getter
@@ -27,6 +30,7 @@ public class ValidatedFragment {
   @Getter
   private final boolean isDerivedContent;
   public final static String FOCUS_NAME = "focus";
+  public final static String ITEM_NAME = "item";
 
   @Getter
   private List<ValidationMessage> errors = new ArrayList<>();

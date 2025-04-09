@@ -21,6 +21,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.r5.context.IWorkerContext;
 import org.hl7.fhir.r5.renderers.DataRenderer;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 
 import com.microsoft.schemas.office.visio.x2012.main.ShapeSheetType;
 
@@ -55,6 +56,7 @@ import com.microsoft.schemas.office.visio.x2012.main.ShapeSheetType;
 
 
 
+@MarkedToMoveToAdjunctPackage
 public class SpreadsheetGenerator {
     
   private static final int MAX_SENSITIVE_SHEET_NAME_LEN = 31;
@@ -100,7 +102,8 @@ public class SpreadsheetGenerator {
     if (name.length() > MAX_SENSITIVE_SHEET_NAME_LEN - 2) {
       name = name.substring(0, MAX_SENSITIVE_SHEET_NAME_LEN - 2);
     }
-    String s = fixSheetNameChars(name);
+    name = fixSheetNameChars(name);
+    String s = name;
     if (sheetNames.containsKey(s)) {
       int i = 1;
       do {
@@ -209,5 +212,11 @@ public class SpreadsheetGenerator {
       addCell(row, i, values[i], styles.get("body"));
     }
   }
-  
+
+  public void dump() {
+    wb = null;
+    styles = null;
+    dr = null;
+    sheetNames = null;
+  }
 }

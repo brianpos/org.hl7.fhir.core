@@ -1,9 +1,11 @@
 package org.hl7.fhir.utilities;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.settings.FhirSettings;
 
 import lombok.AccessLevel;
@@ -76,13 +78,14 @@ public class PathBuilder {
    * @param args entries with which to construct the filesystem path
    * @throws RuntimeException
    * @return a local filesystem path
+   * @throws IOException 
    *
    * @see this#withRequiredTarget(String)
    * @see this#withRequireNonNullNonEmptyFirstEntry(boolean)
    * @see this#withRequireNonRootFirstEntry(boolean)
    * @see this#withRequirePathIsChildOfTarget(boolean)
    */
-  public String buildPath(String... args) {
+  public String buildPath(String... args) throws IOException {
 
     checkNonNullNonEmptyFirstEntry(args);
     checkNonRootFirstEntry(args);
@@ -131,7 +134,7 @@ public class PathBuilder {
     return stringBuilder.toString();
   }
 
-  private void checkPathIsChildOfTarget(String path, String[] args) {
+  private void checkPathIsChildOfTarget(String path, String[] args) throws IOException {
     if (!requirePathIsChildOfTarget) {
       return;
     }
@@ -164,26 +167,32 @@ public class PathBuilder {
   }
 
 
-  private String replaceVariables(String a) {
+  private String replaceVariables(String a) throws IOException {
     if ("[tmp]".equals(a)) {
-      if (hasCTempDir()) {
-        return Utilities.C_TEMP_DIR;
-      } else if (FhirSettings.hasTempPath()) {
-        return FhirSettings.getTempPath();
-      } else {
-        return System.getProperty("java.io.tmpdir");
-      }
+      return getTempDir();
+    } else if (a.startsWith("[tmp]")) {
+      return getTempDir()+a.substring(5);
     } else if ("[user]".equals(a)) {
       return System.getProperty("user.home");
     }
     return a;
   }
 
-  protected static boolean hasCTempDir() {
+  private String getTempDir() throws IOException {
+    if (hasCTempDir()) {
+      return Utilities.C_TEMP_DIR;
+    } else if (FhirSettings.hasTempPath()) {
+      return FhirSettings.getTempPath();
+    } else {
+      return System.getProperty("java.io.tmpdir");
+    }
+  }
+
+  protected static boolean hasCTempDir() throws IOException {
     if (!System.getProperty("os.name").toLowerCase().contains("win")) {
       return false;
     }
-    File tmp = new File(Utilities.C_TEMP_DIR);
+    File tmp = ManagedFileAccess.file(Utilities.C_TEMP_DIR);
     return tmp.exists() && tmp.isDirectory() && tmp.canWrite();
   }
 

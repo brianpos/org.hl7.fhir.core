@@ -75,7 +75,6 @@ public class BundleValidator extends BaseValidator {
 
   public boolean validateBundle(List<ValidationMessage> errors, Element bundle, NodeStack stack, boolean checkSpecials, ValidationContext hostContext, PercentageTracker pct, ValidationMode mode) {
     boolean ok = true;
-    sessionId = Utilities.makeUuidLC();
     
     String type = bundle.getNamedChildValue(TYPE, false);
     type = StringUtils.defaultString(type);
@@ -176,12 +175,12 @@ public class BundleValidator extends BaseValidator {
                 res.addMessage(signpost(errors, NO_RULE_DATE, IssueType.INFORMATIONAL, res.line(), res.col(), stack.getLiteralPath(), I18nConstants.VALIDATION_VAL_PROFILE_SIGNPOST_BUNDLE_PARAM, defn.getUrl()));
               }
               stack.resetIds();
-              ok = validator().startInner(hostContext, errors, res, res, defn, rstack, false, pct, mode) && ok;
+              ok = validator().startInner(hostContext, errors, res, res, defn, rstack, false, pct, mode, false) && ok;
             }
           }
         }
         // also, while we're here, check the specials, since this doesn't happen anywhere else 
-        ((InstanceValidator) parent).checkSpecials(hostContext, errors, res, rstack, true, pct, mode);
+        ((InstanceValidator) parent).checkSpecials(hostContext, errors, res, rstack, true, pct, mode, true, ok);
       }
       
       // todo: check specials
@@ -190,9 +189,6 @@ public class BundleValidator extends BaseValidator {
     return ok;
   }
 
-  private InstanceValidator validator() {
-    return (InstanceValidator) parent;
-  }
 
   private boolean validateLink(List<ValidationMessage> errors, Element bundle, List<Element> links, Element link, NodeStack stack, String type, List<Element> entries) {
     switch (type) {
@@ -851,7 +847,10 @@ public class BundleValidator extends BaseValidator {
         if (ref != null && !ref.startsWith("#") && !hasReference(ref, references))
           references.add(new StringWithSource(ref, child, true, isNLLink(start)));
       }
-      findReferences(child, references);
+      // don't walk into a sub-bundle 
+      if (!"Bundle".equals(child.fhirType())) {
+        findReferences(child, references);
+      }
     }
   }
 

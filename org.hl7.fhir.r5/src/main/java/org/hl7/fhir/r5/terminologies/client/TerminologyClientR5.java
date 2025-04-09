@@ -43,14 +43,13 @@ import org.hl7.fhir.r5.model.Parameters;
 import org.hl7.fhir.r5.model.Resource;
 import org.hl7.fhir.r5.model.TerminologyCapabilities;
 import org.hl7.fhir.r5.model.ValueSet;
-import org.hl7.fhir.r5.terminologies.client.ITerminologyClient;
 import org.hl7.fhir.r5.terminologies.client.TerminologyClientManager.ITerminologyClientFactory;
-import org.hl7.fhir.r5.terminologies.client.TerminologyClientR5.TerminologyClientR5Factory;
 import org.hl7.fhir.r5.utils.client.FHIRToolingClient;
 import org.hl7.fhir.r5.utils.client.network.ClientHeaders;
 import org.hl7.fhir.utilities.FhirPublication;
 import org.hl7.fhir.utilities.ToolingClientLogger;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.http.HTTPHeader;
 
 public class TerminologyClientR5 implements ITerminologyClient {
 
@@ -136,6 +135,11 @@ public class TerminologyClientR5 implements ITerminologyClient {
   }
 
   @Override
+  public Parameters subsumes(Parameters pin) {
+    return client.operateType(CodeSystem.class, "subsumes", pin);
+  }
+
+  @Override
   public Parameters validateVS(Parameters pin) {
     return client.operateType(ValueSet.class, "validate-code", pin);
   }
@@ -163,7 +167,17 @@ public class TerminologyClientR5 implements ITerminologyClient {
   }
 
   @Override
+  public CapabilityStatement getCapabilitiesStatement() {
+    return client.getCapabilitiesStatement();
+  }
+
+  @Override
   public Parameters lookupCode(Map<String, String> params) {
+    return client.lookupCode(params);
+  }
+
+  @Override
+  public Parameters lookupCode(Parameters params) {
     return client.lookupCode(params);
   }
 
@@ -202,8 +216,8 @@ public class TerminologyClientR5 implements ITerminologyClient {
   }
 
   @Override
-  public ClientHeaders getClientHeaders() {
-    return clientHeaders;
+  public Iterable<HTTPHeader> getClientHeaders() {
+    return clientHeaders.headers();
   }
 
   @Override
@@ -255,5 +269,17 @@ public class TerminologyClientR5 implements ITerminologyClient {
   public Bundle search(String type, String criteria) {
     return client.search(type, criteria);
   }
+
+  @Override
+  public Parameters translate(Parameters params) throws FHIRException {
+    return client.translate(params);
+  }
+
+  @Override
+  public void setConversionLogger(ITerminologyConversionLogger logger) {
+    // TODO Auto-generated method stub
+    
+  }
+
 
 }

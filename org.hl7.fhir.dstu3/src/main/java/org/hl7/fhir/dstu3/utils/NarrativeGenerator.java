@@ -196,6 +196,7 @@ import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.hl7.fhir.utilities.xml.XmlGenerator;
 import org.w3c.dom.Element;
 
+@Deprecated
 public class NarrativeGenerator implements INarrativeGenerator {
 
   public class ResourceContext {
@@ -1537,9 +1538,9 @@ public class NarrativeGenerator implements INarrativeGenerator {
       XhtmlNode div = res.getNarrative();
       if (div != null) {
         if (div.allChildrenAreText())
-          x.getChildNodes().addAll(div.getChildNodes());
+          x.addChildNodes(div.getChildNodes());
         if (div.getChildNodes().size() == 1 && div.getChildNodes().get(0).allChildrenAreText())
-          x.getChildNodes().addAll(div.getChildNodes().get(0).getChildNodes());
+          x.addChildNodes(div.getChildNodes().get(0).getChildNodes());
       }
       x.tx("Generated Summary: ");
     }
@@ -2304,7 +2305,7 @@ public class NarrativeGenerator implements INarrativeGenerator {
     } else {
       XhtmlNode n = r.getText().getDiv();
       n.hr();
-      n.getChildNodes().addAll(x.getChildNodes());
+      n.addChildNodes(x.getChildNodes());
     }
   }
 
@@ -3704,10 +3705,11 @@ public class NarrativeGenerator implements INarrativeGenerator {
   public boolean generate(ResourceContext rcontext, StructureDefinition sd, java.util.Set<String> outputTracker) throws EOperationOutcome, FHIRException, IOException {
     ProfileUtilities pu = new ProfileUtilities(context, null, pkp);
     XhtmlNode x = new XhtmlNode(NodeType.Element, "div");
-    x.getChildNodes().add(pu.generateTable(definitionsTarget, sd, true, destDir, false, sd.getId(), false, corePath, "", false, false, outputTracker));
+    x.addChildNode(pu.generateTable(definitionsTarget, sd, true, destDir, false, sd.getId(), false, corePath, "", false, false, outputTracker));
     inject(sd, x, NarrativeStatus.GENERATED);
     return true;
   }
+  
   public boolean generate(ResourceContext rcontext, ImplementationGuide ig) throws EOperationOutcome, FHIRException, IOException {
     XhtmlNode x = new XhtmlNode(NodeType.Element, "div");
     x.h2().addText(ig.getName());
@@ -3807,7 +3809,7 @@ public class NarrativeGenerator implements INarrativeGenerator {
 		} catch (org.hl7.fhir.exceptions.FHIRFormatError e) {
 			throw new FHIRFormatError(e.getMessage(), e);
 		}
-	    x.getChildNodes().addAll(m.getChildNodes());
+	    x.addChildNodes(m.getChildNodes());
 	  }
   }
 
@@ -3924,11 +3926,11 @@ public class NarrativeGenerator implements INarrativeGenerator {
      */
     XhtmlNode root = new XhtmlNode(NodeType.Element, "div");
     Composition comp = (Composition) feed.getEntry().get(0).getResource();
-    root.getChildNodes().add(comp.getText().getDiv());
+    root.addChildNode(comp.getText().getDiv());
     Resource subject = ResourceUtilities.getById(feed, null, comp.getSubject().getReference());
     if (subject != null && subject instanceof DomainResource) {
       root.hr();
-      root.getChildNodes().add(((DomainResource)subject).getText().getDiv());
+      root.addChildNode(((DomainResource)subject).getText().getDiv());
     }
     List<SectionComponent> sections = comp.getSection();
     renderSections(feed, root, sections, 1);
@@ -3944,7 +3946,7 @@ public class NarrativeGenerator implements INarrativeGenerator {
 //        node.addTag("h"+Integer.toString(level)).addText(displayCodeableConcept(section.getCode()));
 
 //      if (section.hasText()) {
-//        node.getChildNodes().add(section.getText().getDiv());
+//        node.addChildNode(section.getText().getDiv());
 //      }
 //
 //      if (!section.getSection().isEmpty()) {
@@ -4217,7 +4219,7 @@ public class NarrativeGenerator implements INarrativeGenerator {
           if (be.hasResource() && be.getResource() instanceof DomainResource) {
             DomainResource dr = (DomainResource) be.getResource();
             if ( dr.getText().hasDiv())
-              root.blockquote().getChildNodes().addAll(dr.getText().getDiv().getChildNodes());
+              root.blockquote().addChildNodes(dr.getText().getDiv().getChildNodes());
           }
         }
       }
@@ -4271,7 +4273,7 @@ public class NarrativeGenerator implements INarrativeGenerator {
     for (Base b : element.listChildrenByName("entry")) {
       XhtmlNode c = getHtmlForResource(((org.hl7.fhir.dstu3.elementmodel.Element) b).getNamedChild("resource"));
       if (c != null)
-        root.getChildNodes().addAll(c.getChildNodes());
+        root.addChildNodes(c.getChildNodes());
       root.hr();
     }
     return root;

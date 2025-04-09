@@ -7,13 +7,13 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashSet;
-import java.util.Set;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonToken;
 import org.hl7.fhir.exceptions.FHIRException;
-import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.json.model.JsonArray;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.json.parser.JsonParser;
@@ -44,7 +44,7 @@ public class NpmPackageIndexBuilder {
     dbFilename = filename;
     if (filename != null) {
       try {
-        new File(filename).delete();
+        ManagedFileAccess.file(filename).delete();
         conn = DriverManager.getConnection("jdbc:sqlite:"+filename); 
         Statement stmt = conn.createStatement();
         stmt.execute("CREATE TABLE ResourceList (\r\n"+
@@ -76,59 +76,68 @@ public class NpmPackageIndexBuilder {
 
   public boolean seeFile(String name, byte[] content) {
     if (name.endsWith(".json")) {
-      try {
-        JsonObject json = JsonParser.parseObject(content);
-        if (json.has("resourceType")) {
-          // ok we treat it as a resource
-          JsonObject fi = new JsonObject();
-          files.add(fi);
-          fi.add("filename", name);
-          fi.add("resourceType", json.asString("resourceType")); 
-          if (json.hasPrimitive("id")) {
-            fi.add("id", json.asString("id"));
+      /* We are only interested in some string fields on the first level of the JSON file.
+       * We can then use a streaming parser to get the values of these fields instead of parsing the whole file and
+       * allocating memory for everything in it.
+       */
+      try (final var parser = new JsonFactory().createParser(content)) {
+        final var fi = new JsonObject();
+        int level = 0;
+
+        while (parser.nextToken() != null) {
+          if (parser.currentToken() == JsonToken.START_OBJECT || parser.currentToken() == JsonToken.START_ARRAY) {
+            level++;
+          } else if (parser.currentToken() == JsonToken.END_OBJECT || parser.currentToken() == JsonToken.END_ARRAY) {
+            level--;
           }
-          if (json.hasPrimitive("url")) {
-            fi.add("url", json.asString("url"));
+          if (level != 1) {
+            continue;
           }
-          if (json.hasPrimitive("version")) {
-            fi.add("version", json.asString("version"));
+
+          String fieldName = parser.currentName();
+
+          if ("resourceType".equals(fieldName)) {
+            parser.nextToken();
+            files.add(fi);
+            fi.add("filename", name);
+            fi.add(fieldName, parser.getText());
           }
-          if (json.hasPrimitive("kind")) {
-            fi.add("kind", json.asString("kind"));
-          }
-          if (json.hasPrimitive("type")) {
-            fi.add("type", json.asString("type"));
-          }
-          if (json.hasPrimitive("supplements")) {
-            fi.add("supplements", json.asString("supplements"));
-          }
-          if (json.hasPrimitive("content")) {
-            fi.add("content", json.asString("content"));
-          }
-          if (json.hasPrimitive("valueSet")) {
-            fi.add("valueSet", json.asString("valueSet"));
-          }
-          if (json.hasPrimitive("derivation")) {
-            fi.add("derivation", json.asString("derivation"));
-          }
-          
-          if (psql != null) {
-            psql.setString(1, name); // FileName); 
-            psql.setString(2, json.asString("resourceType")); // ResourceType"); 
-            psql.setString(3, json.asString("id")); // Id"); 
-            psql.setString(4, json.asString("url")); // Url"); 
-            psql.setString(5, json.asString("version")); // Version"); 
-            psql.setString(6, json.asString("kind")); // Kind");
-            psql.setString(7, json.asString("type")); // Type"); 
-            psql.setString(8, json.asString("supplements")); // Supplements"); 
-            psql.setString(9, json.asString("content")); // Content");
-            psql.setString(10, json.asString("valueSet")); // ValueSet");
-            psql.setString(10, json.asString("derivation")); // ValueSet");
-            psql.execute();
+
+          if ("id".equals(fieldName)
+              || "url".equals(fieldName)
+              || "version".equals(fieldName)
+              || "kind".equals(fieldName)
+              || "type".equals(fieldName)
+              || "supplements".equals(fieldName)
+              || "content".equals(fieldName)
+              || "valueSet".equals(fieldName)
+              || "derivation".equals(fieldName)) {
+            parser.nextToken();
+            fi.add(fieldName, parser.getText());
           }
         }
+
+        if (!fi.has("resourceType")) {
+          // We haven't seen the 'resourceType' key, it's not a FHIR resource
+          return true;
+        }
+
+        if (psql != null) {
+          psql.setString(1, name); // FileName);
+          psql.setString(2, fi.asString("resourceType")); // ResourceType");
+          psql.setString(3, fi.asString("id")); // Id");
+          psql.setString(4, fi.asString("url")); // Url");
+          psql.setString(5, fi.asString("version")); // Version");
+          psql.setString(6, fi.asString("kind")); // Kind");
+          psql.setString(7, fi.asString("type")); // Type");
+          psql.setString(8, fi.asString("supplements")); // Supplements");
+          psql.setString(9, fi.asString("content")); // Content");
+          psql.setString(10, fi.asString("valueSet")); // ValueSet");
+          psql.setString(10, fi.asString("derivation")); // Derivation");
+          psql.execute();
+        }
       } catch (Exception e) {
-        System.out.println("Error parsing "+name+": "+e.getMessage());
+//        System.out.println("Error parsing "+name+": "+e.getMessage());
         if (name.contains("openapi")) {
           return false;
         }
@@ -169,20 +178,20 @@ public class NpmPackageIndexBuilder {
       throw new FHIRException("Not a proper package? (can't find package.json)");
     }
     start(Utilities.path(folder, ".index.db"));
-    File dir = new File(folder);
+    File dir = ManagedFileAccess.file(folder);
     for (File f : dir.listFiles()) {
-      seeFile(f.getName(), TextFile.fileToBytes(f));
+      seeFile(f.getName(), FileUtilities.fileToBytes(f));
     }
-    TextFile.stringToFile(build(), Utilities.path(folder, ".index.json"));
+    FileUtilities.stringToFile(build(), Utilities.path(folder, ".index.json"));
   }
 
   private boolean existsFolder(String... args) throws IOException {
-    File f = new File(Utilities.path(args));
+    File f = ManagedFileAccess.file(Utilities.path(args));
     return f.exists() && f.isDirectory();
   }
 
   private boolean existsFile(String... args) throws IOException {
-    File f = new File(Utilities.path(args));
+    File f = ManagedFileAccess.file(Utilities.path(args));
     return f.exists() && !f.isDirectory();
   }
 

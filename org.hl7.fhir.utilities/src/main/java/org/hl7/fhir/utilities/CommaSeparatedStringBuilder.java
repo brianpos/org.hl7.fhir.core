@@ -1,8 +1,11 @@
 package org.hl7.fhir.utilities;
 
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+
+
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -123,6 +126,33 @@ public class CommaSeparatedStringBuilder {
     }
     return b.toString();
   }
+  
+  public static String join2(String sep, String finalSep, Collection<String> list) {
+    CommaSeparatedStringBuilder b = new CommaSeparatedStringBuilder(sep, finalSep);
+    for (String s : list) {
+      if (s != null) {
+        b.append(s);
+      }
+    }
+    return b.toString();
+  }
+
+  public static String joinToLimit(String sep, int limit, String overflow, Collection<String> list) {
+    CommaSeparatedStringBuilder b = new CommaSeparatedStringBuilder(sep);
+    int i = 0;
+    for (String s : list) {
+      if (s != null) {
+        i++;
+        if (i == limit) {
+          b.append(overflow);
+          break;
+        } else {
+          b.append(s);
+        }
+      }
+    }
+    return b.toString();
+  }
 
   public static String join(String sep, String[] list) {
     CommaSeparatedStringBuilder b = new CommaSeparatedStringBuilder(sep);
@@ -168,6 +198,14 @@ public class CommaSeparatedStringBuilder {
       if (s != null) {
         b.append(leftWrap+s+rightWrap);
       }
+    }
+    return b.toString();
+  }
+
+  public static String join(String sep, EnumSet<? extends Enum> set) {
+    CommaSeparatedStringBuilder b = new CommaSeparatedStringBuilder(sep);
+    for (Enum e : set) {
+      b.append(e.toString());
     }
     return b.toString();
   }

@@ -58,6 +58,12 @@ public class JsonArray extends JsonElement implements Iterable<JsonElement> {
     items.add(new JsonString(value));
     return this;
   }
+  
+  public JsonObject addObject() {
+    JsonObject res = new JsonObject();
+    add(res);
+    return res;
+  }
 
   public Integer size() {
     return items.size();
@@ -143,6 +149,22 @@ public class JsonArray extends JsonElement implements Iterable<JsonElement> {
 
   public void remove(JsonElement e) {
     items.remove(e);
+    
+  }
+
+  public boolean has(String key) {
+    for (JsonElement e : items) {
+      if (e.isJsonString() && key.equals(e.asString())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public void addAll(JsonArray src) {
+    for (JsonElement e : src) {
+      add(e);
+    }
     
   }
   

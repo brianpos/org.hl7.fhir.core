@@ -4,6 +4,7 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +24,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.hl7.fhir.convertors.advisors.impl.BaseAdvisor_30_40;
 import org.hl7.fhir.convertors.advisors.impl.BaseAdvisor_30_50;
+import org.hl7.fhir.convertors.context.ContextResourceLoaderFactory;
 import org.hl7.fhir.convertors.factory.VersionConvertorFactory_10_30;
 import org.hl7.fhir.convertors.factory.VersionConvertorFactory_10_40;
 import org.hl7.fhir.convertors.factory.VersionConvertorFactory_10_50;
@@ -32,16 +34,35 @@ import org.hl7.fhir.convertors.factory.VersionConvertorFactory_14_50;
 import org.hl7.fhir.convertors.factory.VersionConvertorFactory_30_40;
 import org.hl7.fhir.convertors.factory.VersionConvertorFactory_30_50;
 import org.hl7.fhir.convertors.factory.VersionConvertorFactory_40_50;
+import org.hl7.fhir.convertors.loaders.loaderR5.NullLoaderKnowledgeProviderR5;
+import org.hl7.fhir.exceptions.DefinitionException;
+import org.hl7.fhir.r5.conformance.profile.ProfileUtilities;
+import org.hl7.fhir.r5.context.ContextUtilities;
+import org.hl7.fhir.r5.context.IContextResourceLoader;
+import org.hl7.fhir.r5.context.IWorkerContext;
+import org.hl7.fhir.r5.context.SimpleWorkerContext;
+import org.hl7.fhir.r5.model.CanonicalResource;
+import org.hl7.fhir.r5.model.CanonicalType;
+import org.hl7.fhir.r5.model.CodeSystem;
+import org.hl7.fhir.r5.model.ElementDefinition;
+import org.hl7.fhir.r5.model.ElementDefinition.TypeRefComponent;
 import org.hl7.fhir.r5.model.Enumeration;
+import org.hl7.fhir.r5.model.Enumerations.FHIRVersion;
 import org.hl7.fhir.r5.model.Enumerations.FHIRVersionEnumFactory;
 import org.hl7.fhir.r5.model.ImplementationGuide;
 import org.hl7.fhir.r5.model.Resource;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.r5.model.StructureDefinition;
+import org.hl7.fhir.r5.model.ValueSet;
+import org.hl7.fhir.r5.model.ValueSet.ConceptSetComponent;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.json.model.JsonArray;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.json.parser.JsonParser;
+import org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager;
+import org.hl7.fhir.utilities.npm.NpmPackage;
 import org.hl7.fhir.utilities.npm.NpmPackageIndexBuilder;
 
 public class NpmPackageVersionConverter {
@@ -54,25 +75,23 @@ public class NpmPackageVersionConverter {
   private final String vCode;
   private final List<String> errors = new ArrayList<>();
   private String currentVersion;
-
   private String packageId;
+  private IWorkerContext context;
+  private Map<String, Resource> additionalResources = new HashMap<>();
 
-  public NpmPackageVersionConverter(String source, String dest, String version, String packageId) {
+  private NpmPackage targetNpm;
+  private SimpleWorkerContext tctxt;
+  private ContextUtilities cu;
+
+  public NpmPackageVersionConverter(String source, String dest, String version, String packageId, IWorkerContext context) {
     super();
     this.source = source;
     this.dest = dest;
     this.vCode = version;
     this.packageId = packageId;
     this.version = VersionUtilities.versionFromCode(version);
-  }
-
-  public static void main(String[] args) throws IOException {
-    NpmPackageVersionConverter self = new NpmPackageVersionConverter(args[0], args[1], args[2], args[3]);
-    self.execute();
-    System.out.println("Finished");
-    for (String s : self.errors) {
-      System.out.println(s);
-    }
+    this.context = context;
+    cu = new ContextUtilities(context);
   }
 
   public List<String> getErrors() {
@@ -80,10 +99,11 @@ public class NpmPackageVersionConverter {
   }
 
   public void execute() throws IOException {
-    Map<String, byte[]> content = loadContentMap(new FileInputStream(source));
+    Map<String, byte[]> content = loadContentMap(ManagedFileAccess.inStream(source));
 
     Map<String, byte[]> output = new HashMap<>();
     output.put("package/package.json", convertPackage(content.get("package/package.json")));
+
     output.put("package/other/spec.internals", convertSpec(content.get("package/other/spec.internals")));
 
     for (Entry<String, byte[]> e : content.entrySet()) {
@@ -99,6 +119,15 @@ public class NpmPackageVersionConverter {
         if (cnv != null && cnv.length > 0) {
           output.put(e.getKey(), cnv);
         }
+      }
+    }
+    for (Resource res : additionalResources.values()) {
+      byte[] cnv = convertResource(res);
+      String fn = "package/"+res.fhirType()+"-"+res.getId()+".json";
+      if (output.containsKey(fn)) {
+        System.out.println("Duplicate resource "+fn);
+      } else {
+        output.put(fn, cnv);
       }
     }
 
@@ -140,8 +169,8 @@ public class NpmPackageVersionConverter {
       tar.putArchiveEntry(entry);
       tar.write(cnt);
       tar.closeArchiveEntry();
-      cnt = TextFile.fileToBytes(e.getValue().getDbFilename());
-      new File(e.getValue().getDbFilename()).delete();
+      cnt = FileUtilities.fileToBytes(e.getValue().getDbFilename());
+      ManagedFileAccess.file(e.getValue().getDbFilename()).delete();
       entry = new TarArchiveEntry(e.getKey() + "/.index.db");
       entry.setSize(cnt.length);
       tar.putArchiveEntry(entry);
@@ -162,7 +191,7 @@ public class NpmPackageVersionConverter {
     bufferedOutputStream.close();
     OutputStream.close();
     byte[] b = OutputStream.toByteArray();
-    TextFile.bytesToFile(b, dest);
+    FileUtilities.bytesToFile(b, dest);
   }
 
   @Nonnull
@@ -236,7 +265,7 @@ public class NpmPackageVersionConverter {
           return new org.hl7.fhir.dstu2016may.formats.JsonParser().composeBytes(VersionConvertorFactory_14_30.convertResource(VersionConvertorFactory_10_30.convertResource(res)));
         } else if (VersionUtilities.isR3Ver(version)) {
           return new org.hl7.fhir.dstu3.formats.JsonParser().composeBytes(VersionConvertorFactory_10_30.convertResource(res));
-        } else if (VersionUtilities.isR4Ver(version)) {
+        } else if (VersionUtilities.isR4Ver(version) || VersionUtilities.isR4BVer(version)) {
           return new org.hl7.fhir.r4.formats.JsonParser().composeBytes(VersionConvertorFactory_10_40.convertResource(res));
         } else if (VersionUtilities.isR5Plus(version)) {
           return new org.hl7.fhir.r5.formats.JsonParser().composeBytes(VersionConvertorFactory_10_50.convertResource(res));
@@ -250,7 +279,7 @@ public class NpmPackageVersionConverter {
           return new org.hl7.fhir.dstu2016may.formats.JsonParser().composeBytes(res);
         } else if (VersionUtilities.isR3Ver(version)) {
           return new org.hl7.fhir.dstu3.formats.JsonParser().composeBytes(VersionConvertorFactory_14_30.convertResource(res));
-        } else if (VersionUtilities.isR4Ver(version)) {
+        } else if (VersionUtilities.isR4Ver(version) || VersionUtilities.isR4BVer(version)) {
           return new org.hl7.fhir.r4.formats.JsonParser().composeBytes(VersionConvertorFactory_14_40.convertResource(res));
         } else if (VersionUtilities.isR5Plus(version)) {
           return new org.hl7.fhir.r5.formats.JsonParser().composeBytes(VersionConvertorFactory_14_50.convertResource(res));
@@ -264,7 +293,7 @@ public class NpmPackageVersionConverter {
           return new org.hl7.fhir.dstu2016may.formats.JsonParser().composeBytes(VersionConvertorFactory_14_30.convertResource(res));
         } else if (VersionUtilities.isR3Ver(version)) {
           return new org.hl7.fhir.dstu3.formats.JsonParser().composeBytes(res);
-        } else if (VersionUtilities.isR4Ver(version)) {
+        } else if (VersionUtilities.isR4Ver(version) || VersionUtilities.isR4BVer(version)) {
           return new org.hl7.fhir.r4.formats.JsonParser().composeBytes(VersionConvertorFactory_30_40.convertResource(res));
         } else if (VersionUtilities.isR5Plus(version)) {
           return new org.hl7.fhir.r5.formats.JsonParser().composeBytes(VersionConvertorFactory_30_50.convertResource(res));
@@ -278,13 +307,28 @@ public class NpmPackageVersionConverter {
           return new org.hl7.fhir.dstu2016may.formats.JsonParser().composeBytes(VersionConvertorFactory_14_40.convertResource(res));
         } else if (VersionUtilities.isR3Ver(version)) {
           return new org.hl7.fhir.dstu3.formats.JsonParser().composeBytes(VersionConvertorFactory_30_40.convertResource(res, new BaseAdvisor_30_40(false)));
-        } else if (VersionUtilities.isR4Ver(version)) {
+        } else if (VersionUtilities.isR4Ver(version) || VersionUtilities.isR4BVer(version)) {
+          return new org.hl7.fhir.r4.formats.JsonParser().composeBytes(res);
+        } else if (VersionUtilities.isR5Plus(version)) {
+          return new org.hl7.fhir.r5.formats.JsonParser().composeBytes(VersionConvertorFactory_40_50.convertResource(res));
+        }
+      } else if (VersionUtilities.isR4BVer(currentVersion)) {
+        org.hl7.fhir.r4.model.Resource res = new org.hl7.fhir.r4.formats.JsonParser().parse(cnt);
+        convertResourceR4B(res);
+        if (VersionUtilities.isR2Ver(version)) {
+          return new org.hl7.fhir.dstu2.formats.JsonParser().composeBytes(VersionConvertorFactory_10_40.convertResource(res, new PR2Handler()));
+        } else if (VersionUtilities.isR2BVer(version)) {
+          return new org.hl7.fhir.dstu2016may.formats.JsonParser().composeBytes(VersionConvertorFactory_14_40.convertResource(res));
+        } else if (VersionUtilities.isR3Ver(version)) {
+          return new org.hl7.fhir.dstu3.formats.JsonParser().composeBytes(VersionConvertorFactory_30_40.convertResource(res, new BaseAdvisor_30_40(false)));
+        } else if (VersionUtilities.isR4Ver(version) || VersionUtilities.isR4BVer(version)) {
           return new org.hl7.fhir.r4.formats.JsonParser().composeBytes(res);
         } else if (VersionUtilities.isR5Plus(version)) {
           return new org.hl7.fhir.r5.formats.JsonParser().composeBytes(VersionConvertorFactory_40_50.convertResource(res));
         }
       } else if (VersionUtilities.isR5Plus(currentVersion)) {
         org.hl7.fhir.r5.model.Resource res = new org.hl7.fhir.r5.formats.JsonParser().parse(cnt);
+        checkForCoreDependencies(res);
         convertResourceR5(res);
         if (VersionUtilities.isR2Ver(version)) {
           return new org.hl7.fhir.dstu2.formats.JsonParser().composeBytes(VersionConvertorFactory_10_50.convertResource(res));
@@ -292,7 +336,7 @@ public class NpmPackageVersionConverter {
           return new org.hl7.fhir.dstu2016may.formats.JsonParser().composeBytes(VersionConvertorFactory_14_50.convertResource(res));
         } else if (VersionUtilities.isR3Ver(version)) {
           return new org.hl7.fhir.dstu3.formats.JsonParser().composeBytes(VersionConvertorFactory_30_50.convertResource(res, new BaseAdvisor_30_50(false)));
-        } else if (VersionUtilities.isR4Ver(version)) {
+        } else if (VersionUtilities.isR4Ver(version) || VersionUtilities.isR4BVer(version)) {
           return new org.hl7.fhir.r4.formats.JsonParser().composeBytes(VersionConvertorFactory_40_50.convertResource(res));
         } else if (VersionUtilities.isR5Plus(version)) {
           return new org.hl7.fhir.r5.formats.JsonParser().composeBytes(res);
@@ -300,10 +344,92 @@ public class NpmPackageVersionConverter {
       }
       throw new Error("Unknown version " + currentVersion + " -> " + version);
     } catch (Exception ex) {
-      ex.printStackTrace();
       errors.add("Error converting " + n + ": " + ex.getMessage());
+
+      System.out.println("Error converting " + n + ": " + ex.getMessage());
+      ex.printStackTrace();
       return null;
     }
+  }
+  private byte[] convertResource(Resource res) {
+    try {
+      convertResourceR5(res);
+      if (VersionUtilities.isR2Ver(version)) {
+        return new org.hl7.fhir.dstu2.formats.JsonParser().composeBytes(VersionConvertorFactory_10_50.convertResource(res));
+      } else if (VersionUtilities.isR2BVer(version)) {
+        return new org.hl7.fhir.dstu2016may.formats.JsonParser().composeBytes(VersionConvertorFactory_14_50.convertResource(res));
+      } else if (VersionUtilities.isR3Ver(version)) {
+        return new org.hl7.fhir.dstu3.formats.JsonParser().composeBytes(VersionConvertorFactory_30_50.convertResource(res, new BaseAdvisor_30_50(false)));
+      } else if (VersionUtilities.isR4Ver(version) || VersionUtilities.isR4BVer(version)) {
+        return new org.hl7.fhir.r4.formats.JsonParser().composeBytes(VersionConvertorFactory_40_50.convertResource(res));
+      } else if (VersionUtilities.isR5Plus(version)) {
+        return new org.hl7.fhir.r5.formats.JsonParser().composeBytes(res);
+      }
+      throw new Error("Unknown version " + currentVersion + " -> " + version);
+    } catch (Exception ex) {
+      errors.add("Error converting " + res.fhirType()+"/"+res.getId() + ": " + ex.getMessage());
+      return null;
+    }
+  }
+
+
+  private void checkForCoreDependencies(Resource res) throws IOException {
+    if (res instanceof StructureDefinition) {
+      checkForCoreDependenciesSD((StructureDefinition) res);
+    }
+    if (res instanceof ValueSet) {
+      checkForCoreDependenciesVS((ValueSet) res);
+    }    
+  }
+
+  private void checkForCoreDependenciesSD(StructureDefinition sd) throws IOException {
+    for (ElementDefinition ed : sd.getSnapshot().getElement()) {
+      if (ed.hasBinding() && ed.getBinding().hasValueSet()) {
+        ValueSet vs = context.fetchResource(ValueSet.class, ed.getBinding().getValueSet());
+        if (vs != null) {
+          checkForCoreDependenciesVS(vs);
+        }
+      }
+    }
+  }
+
+  private void checkForCoreDependenciesVS(ValueSet valueSet) throws IOException {
+    if (isCoreResource(valueSet)) {
+      if (!inTargetCore(valueSet)) {
+        additionalResources.put(valueSet.getUrl(), valueSet);
+      }
+    }
+    for (ConceptSetComponent inc : valueSet.getCompose().getInclude()) {
+      for (CanonicalType c : inc.getValueSet()) {
+        ValueSet vs = context.fetchResource(ValueSet.class, c.getValue());
+        if (vs != null) {
+          checkForCoreDependenciesVS(vs);
+        }
+      }
+      if (inc.hasSystem()) {
+        CodeSystem cs = context.fetchResource(CodeSystem.class, inc.getSystem(), inc.getVersion());
+        if (cs != null) {
+          checkForCoreDependenciesCS(cs);
+        }
+      }
+    }    
+  }
+
+  private void checkForCoreDependenciesCS(CodeSystem cs) throws IOException {
+    if (isCoreResource(cs)) {
+      if (!inTargetCore(cs)) {
+        additionalResources.put(cs.getUrl(), cs);
+      }
+    }
+  }
+
+  private boolean inTargetCore(CanonicalResource cr) throws IOException {
+    boolean res = targetNpm.hasCanonical(cr.getUrl());
+    return res;
+  }
+
+  private boolean isCoreResource(CanonicalResource cr) {
+    return cr.hasSourcePackage() && Utilities.existsInList(cr.getSourcePackage().getId(), "hl7.fhir.r5.core", "hl7.fhir.r4.core");
   }
 
   private void convertResourceR2(org.hl7.fhir.dstu2.model.Resource res) {
@@ -311,6 +437,10 @@ public class NpmPackageVersionConverter {
       org.hl7.fhir.dstu2.model.ImplementationGuide ig = (org.hl7.fhir.dstu2.model.ImplementationGuide) res;
       ig.setFhirVersion(version);
     } 
+    if (res instanceof org.hl7.fhir.dstu2.model.StructureDefinition) {
+      org.hl7.fhir.dstu2.model.StructureDefinition sd = (org.hl7.fhir.dstu2.model.StructureDefinition) res;
+      sd.setFhirVersion(version);
+    }
   }
 
   private void convertResourceR2B(org.hl7.fhir.dstu2016may.model.Resource res) {
@@ -318,6 +448,10 @@ public class NpmPackageVersionConverter {
       org.hl7.fhir.dstu2016may.model.ImplementationGuide ig = (org.hl7.fhir.dstu2016may.model.ImplementationGuide) res;
       ig.setFhirVersion(version);
     } 
+    if (res instanceof org.hl7.fhir.dstu2016may.model.StructureDefinition) {
+      org.hl7.fhir.dstu2016may.model.StructureDefinition sd = (org.hl7.fhir.dstu2016may.model.StructureDefinition) res;
+      sd.setFhirVersion(version);
+    }
   }
 
   private void convertResourceR3(org.hl7.fhir.dstu3.model.Resource res) {
@@ -325,6 +459,10 @@ public class NpmPackageVersionConverter {
       org.hl7.fhir.dstu3.model.ImplementationGuide ig = (org.hl7.fhir.dstu3.model.ImplementationGuide) res;
       ig.setFhirVersion(version);
     }    
+    if (res instanceof org.hl7.fhir.dstu3.model.StructureDefinition) {
+      org.hl7.fhir.dstu3.model.StructureDefinition sd = (org.hl7.fhir.dstu3.model.StructureDefinition) res;
+      sd.setFhirVersion(version);
+    }
   }
 
   private void convertResourceR4(org.hl7.fhir.r4.model.Resource res) {
@@ -334,6 +472,23 @@ public class NpmPackageVersionConverter {
       ig.getFhirVersion().add(new org.hl7.fhir.r4.model.Enumeration<>(new org.hl7.fhir.r4.model.Enumerations.FHIRVersionEnumFactory(), version));
       ig.setPackageId(packageId);
     }
+    if (res instanceof org.hl7.fhir.r4.model.StructureDefinition) {
+      org.hl7.fhir.r4.model.StructureDefinition sd = (org.hl7.fhir.r4.model.StructureDefinition) res;
+      sd.setFhirVersion(org.hl7.fhir.r4.model.Enumerations.FHIRVersion.fromCode(version));
+    }
+  }
+
+  private void convertResourceR4B(org.hl7.fhir.r4.model.Resource res) {
+    if (res instanceof org.hl7.fhir.r4.model.ImplementationGuide) {
+      org.hl7.fhir.r4.model.ImplementationGuide ig = (org.hl7.fhir.r4.model.ImplementationGuide) res;
+      ig.getFhirVersion().clear();
+      ig.getFhirVersion().add(new org.hl7.fhir.r4.model.Enumeration<>(new org.hl7.fhir.r4.model.Enumerations.FHIRVersionEnumFactory(), version));
+      ig.setPackageId(packageId);
+    }
+    if (res instanceof org.hl7.fhir.r4.model.StructureDefinition) {
+      org.hl7.fhir.r4.model.StructureDefinition sd = (org.hl7.fhir.r4.model.StructureDefinition) res;
+      sd.setFhirVersion(org.hl7.fhir.r4.model.Enumerations.FHIRVersion.fromCode(version));
+    }
   }
 
   private void convertResourceR5(Resource res) {
@@ -342,6 +497,10 @@ public class NpmPackageVersionConverter {
       ig.getFhirVersion().clear();
       ig.getFhirVersion().add(new Enumeration<>(new FHIRVersionEnumFactory(), version));
       ig.setPackageId(packageId);
+    }
+    if (res instanceof StructureDefinition) {
+      StructureDefinition sd = (StructureDefinition) res;
+      sd.setFhirVersion(FHIRVersion.fromCode(version));
     }
   }
 

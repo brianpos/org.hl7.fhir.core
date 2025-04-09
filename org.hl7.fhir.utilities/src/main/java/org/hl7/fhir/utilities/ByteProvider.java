@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
+
 
 public abstract class ByteProvider {
 
@@ -12,7 +14,7 @@ public abstract class ByteProvider {
 
   // this one needs to be deprecated - or try to to use it - get to the source
   public static ByteProvider forStream(InputStream stream) throws IOException {
-    return new ByteProviderBytes(TextFile.streamToBytes(stream));
+    return new ByteProviderBytes(FileUtilities.streamToBytes(stream));
   }
 
   public static ByteProvider forBytes(byte[] bytes) {
@@ -23,8 +25,8 @@ public abstract class ByteProvider {
     return new ByteProviderFile(ff);
   }
 
-  public static ByteProvider forFile(String src) {
-    return new ByteProviderFile(new File(src));
+  public static ByteProvider forFile(String src) throws IOException {
+    return new ByteProviderFile(ManagedFileAccess.file(src));
   }
 
   private static class ByteProviderBytes extends ByteProvider {
@@ -52,7 +54,7 @@ public abstract class ByteProvider {
 
     @Override
     public byte[] getBytes() throws FileNotFoundException, IOException {
-      return TextFile.fileToBytes(file);
+      return FileUtilities.fileToBytes(file);
     }
     
   }

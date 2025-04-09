@@ -1,27 +1,30 @@
 package org.hl7.fhir.dstu3.test;
 
 import java.io.File;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import java.io.FileInputStream;
+import java.io.IOException;
 
 import org.hl7.fhir.dstu3.formats.XmlParser;
 import org.hl7.fhir.dstu3.model.StructureDefinition;
 import org.hl7.fhir.dstu3.utils.QuestionnaireBuilder;
 import org.hl7.fhir.exceptions.FHIRException;
 
+@Deprecated
 public class QuestionnaireBuilderTester {
 
 	private static final String TEST_PROFILE_DIR = "C:\\work\\org.hl7.fhir\\build\\publish";
 //	private static final String TEST_DEST = Utilities.path("[tmp]", "questionnaires\\");
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		QuestionnaireBuilder b = new QuestionnaireBuilder(null);
-		for (String f : new File(TEST_PROFILE_DIR).list()) {
+		for (String f : ManagedFileAccess.file(TEST_PROFILE_DIR).list()) {
 			if (f.endsWith(".profile.xml") && !f.contains("type-")) {
 				System.out.println("process "+f);
 				try {
-					StructureDefinition p = (StructureDefinition) new XmlParser().parse(new FileInputStream(TEST_PROFILE_DIR+"\\"+f));
+					StructureDefinition p = (StructureDefinition) new XmlParser().parse(ManagedFileAccess.inStream(TEST_PROFILE_DIR+"\\"+f));
 //					Questionnaire q = b.buildQuestionnaire(p);
-//					new XmlComposer().compose(new FileOutputStream(TEST_DEST+f), q, true);
+//					new XmlComposer().compose(ManagedFileAccess.outStream(TEST_DEST+f), q, true);
 					  throw new FHIRException("test");
         } catch (Exception e) {
 	        e.printStackTrace();

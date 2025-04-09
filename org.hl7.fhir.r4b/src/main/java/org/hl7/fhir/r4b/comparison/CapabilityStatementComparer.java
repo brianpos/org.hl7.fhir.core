@@ -33,7 +33,9 @@ import org.hl7.fhir.r4b.model.Extension;
 import org.hl7.fhir.r4b.model.PrimitiveType;
 import org.hl7.fhir.r4b.model.Resource;
 import org.hl7.fhir.r4b.model.StructureDefinition;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.i18n.RenderingI18nContext;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueType;
@@ -44,6 +46,7 @@ import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator.Row;
 import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator.TableModel;
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
 
+@MarkedToMoveToAdjunctPackage
 public class CapabilityStatementComparer extends CanonicalResourceComparer {
 
   public class CapabilityStatementComparison extends CanonicalResourceComparison<CapabilityStatement> {
@@ -867,7 +870,7 @@ public class CapabilityStatementComparer extends CanonicalResourceComparer {
   // comments
   public XhtmlNode renderStatements(CapabilityStatementComparison comparison, String id, String prefix)
       throws FHIRException, IOException {
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(Utilities.path("[tmp]", "compare"), false);
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), Utilities.path("[tmp]", "compare"), false);
     TableModel model = gen.new TableModel(id, true);
     model.setAlternating(true);
     model.getTitles().add(gen.new Title(null, null, "Type", "The type of item", null, 100));

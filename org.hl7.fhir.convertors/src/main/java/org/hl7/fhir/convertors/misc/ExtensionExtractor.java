@@ -22,7 +22,9 @@ import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionContextCompo
 import org.hl7.fhir.r5.model.StructureDefinition.TypeDerivationRule;
 import org.hl7.fhir.r5.model.ValueSet;
 import org.hl7.fhir.r5.model.ValueSet.ConceptSetComponent;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager;
 import org.hl7.fhir.utilities.npm.NpmPackage;
@@ -131,7 +133,7 @@ public class ExtensionExtractor {
       save(cs, dst,s, ids);
     }
     
-    deleteMatchingResources(ids, new File("/Users/grahamegrieve/work/r5/source"));
+    deleteMatchingResources(ids, ManagedFileAccess.file("/Users/grahamegrieve/work/r5/source"));
   }
 
   private void deleteMatchingResources(Set<String> ids, File folder) {
@@ -172,9 +174,9 @@ public class ExtensionExtractor {
     ids.add(cr.getId());
     String fn = Utilities.path(dst, folder, cr.fhirType()+"-"+cr.getId()+".xml"); 
     cr.setUserData("folder", folder);
-    if (!new File(fn).exists()) {
-      Utilities.createDirectory(Utilities.getDirectoryForFile(fn));
-      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(fn), cr);
+    if (!ManagedFileAccess.file(fn).exists()) {
+      FileUtilities.createDirectory(FileUtilities.getDirectoryForFile(fn));
+      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(fn), cr);
     }
   }
 

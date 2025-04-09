@@ -7,9 +7,10 @@ import java.io.InputStream;
 import java.nio.file.Path;
 
 import org.apache.commons.io.IOUtils;
-import org.hl7.fhir.utilities.CSFile;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.CSFile;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.settings.FhirSettings;
 
 public class BaseTestingUtilities {
@@ -31,10 +32,10 @@ public class BaseTestingUtilities {
     if (dir == null && FhirSettings.hasFhirTestCasesPath()) {
       dir = FhirSettings.getFhirTestCasesPath();
     }
-    if (dir != null && new CSFile(dir).exists()) {
+    if (dir != null && ManagedFileAccess.csfile(dir).exists()) {
       String n = Utilities.path(dir, Utilities.path(paths));
       // ok, we'll resolve this locally
-      return TextFile.fileToString(new CSFile(n));
+      return FileUtilities.fileToString(ManagedFileAccess.csfile(n));
     } else {
       // resolve from the package
       String contents;
@@ -55,9 +56,9 @@ public class BaseTestingUtilities {
     if (dir == null && FhirSettings.hasFhirTestCasesPath()) {
       dir = FhirSettings.getFhirTestCasesPath();
     }
-    if (dir != null && new File(dir).exists()) {
+    if (dir != null && ManagedFileAccess.file(dir).exists()) {
       String n = Utilities.path(dir, Utilities.path(paths));
-      return new FileInputStream(n);
+      return ManagedFileAccess.inStream(n);
     } else {
       String classpath = ("/org/hl7/fhir/testcases/" + Utilities.pathURL(paths));
       InputStream s = BaseTestingUtilities.class.getResourceAsStream(classpath);
@@ -73,16 +74,16 @@ public class BaseTestingUtilities {
     if (dir == null && FhirSettings.hasFhirTestCasesPath()) {
       dir = FhirSettings.getFhirTestCasesPath();
     }
-    if (dir != null && new File(dir).exists()) {
+    if (dir != null && ManagedFileAccess.file(dir).exists()) {
       String n = Utilities.path(dir, Utilities.path(paths));
-      return TextFile.fileToBytes(n);
+      return FileUtilities.fileToBytes(n);
     } else {
       String classpath = ("/org/hl7/fhir/testcases/" + Utilities.pathURL(paths));
       InputStream s = BaseTestingUtilities.class.getResourceAsStream(classpath);
       if (s == null) {
         throw new Error("unable to find resource " + classpath);
       }
-      return TextFile.streamToBytes(s);
+      return FileUtilities.streamToBytes(s);
     }
   }
 
@@ -91,9 +92,9 @@ public class BaseTestingUtilities {
     if (dir == null && FhirSettings.hasFhirTestCasesPath()) {
       dir = FhirSettings.getFhirTestCasesPath();
     }
-    if (dir != null && new File(dir).exists()) {
+    if (dir != null && ManagedFileAccess.file(dir).exists()) {
       String n = Utilities.path(dir, Utilities.path(paths));
-      return new File(n).exists();
+      return ManagedFileAccess.file(n).exists();
     } else {
       String classpath = ("/org/hl7/fhir/testcases/" + Utilities.pathURL(paths));
       try {
@@ -112,17 +113,17 @@ public class BaseTestingUtilities {
 
   public static String tempFolder(String name) throws IOException {
     String path = Utilities.path(FhirSettings.hasTempPath() ? FhirSettings.getTempPath() : "[tmp]", name);
-    Utilities.createDirectory(path);
+    FileUtilities.createDirectory(path);
     return path;
   }
 
     public static void setFhirTestCasesDirectory(String s) {
     }
 
-  public static void createParentDirIfNotExists(Path target) {
+  public static void createParentDirIfNotExists(Path target) throws IOException {
     Path parent = target.getParent();
-    if (!parent.toFile().exists()) {
-      parent.toFile().mkdirs();
+    if (!ManagedFileAccess.fromPath(parent).exists()) {
+      ManagedFileAccess.fromPath(parent).mkdirs();
     }
   }
 }

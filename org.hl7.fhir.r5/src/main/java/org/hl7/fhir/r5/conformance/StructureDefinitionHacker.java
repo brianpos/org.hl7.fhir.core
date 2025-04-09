@@ -6,14 +6,16 @@ import org.hl7.fhir.r5.model.ElementDefinition.ElementDefinitionConstraintCompon
 import org.hl7.fhir.r5.model.ElementDefinition.TypeRefComponent;
 import org.hl7.fhir.r5.model.Resource;
 import org.hl7.fhir.r5.model.StructureDefinition;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.VersionUtilities;
 
 /**
- * This works around known issues in struture definitions
+ * This works around known issues in structure definitions
  * 
  * @author graha
  *
  */
+@MarkedToMoveToAdjunctPackage
 public class StructureDefinitionHacker {
 
   private String version;
@@ -60,6 +62,18 @@ public class StructureDefinitionHacker {
         if ("Consent.identifier".equals(ed.getPath())) {
           ed.getExampleFirstRep().getValueIdentifier().setSystem("http://acme.org/identifier/local/eCMS");
         }        
+      }
+    }
+    if (VersionUtilities.isR4Ver(version) && "http://hl7.org/fhir/StructureDefinition/ExplanationOfBenefit".equals(sd.getUrl())) {
+      for (ElementDefinition ed : sd.getSnapshot().getElement()) {
+        if (ed.hasBinding() && "http://terminology.hl7.org/CodeSystem/processpriority".equals(ed.getBinding().getValueSet())) {
+          ed.getBinding().setValueSet("http://hl7.org/fhir/ValueSet/process-priority");
+        }
+      }
+      for (ElementDefinition ed : sd.getDifferential().getElement()) {
+        if (ed.hasBinding() && "http://terminology.hl7.org/CodeSystem/processpriority".equals(ed.getBinding().getValueSet())) {
+          ed.getBinding().setValueSet("http://hl7.org/fhir/ValueSet/process-priority");
+        }
       }
     }
     if (sd.getUrl().startsWith("http://hl7.org/fhir/uv/subscriptions-backport")) {

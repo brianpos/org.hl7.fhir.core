@@ -58,11 +58,13 @@ import org.hl7.fhir.r4b.utils.ToolingExtensions;
 import org.hl7.fhir.r4b.utils.validation.ValidationContextCarrier;
 import org.hl7.fhir.r4b.utils.validation.ValidationContextCarrier.ValidationContextResourceProxy;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 import org.hl7.fhir.utilities.validation.ValidationOptions;
 
+@MarkedToMoveToAdjunctPackage
 public class ValueSetCheckerSimple extends ValueSetWorker implements ValueSetChecker {
 
   private ValueSet valueset;
@@ -702,7 +704,7 @@ public class ValueSetCheckerSimple extends ValueSetWorker implements ValueSetChe
           || res.getErrorClass() == TerminologyServiceErrorClass.CODESYSTEM_UNSUPPORTED
           || res.getErrorClass() == TerminologyServiceErrorClass.VALUESET_UNSUPPORTED) {
         if (warnings != null && res.getErrorClass() == TerminologyServiceErrorClass.CODESYSTEM_UNSUPPORTED) {
-          warnings.add(context.formatMessage(I18nConstants.TERMINOLOGY_TX_SYSTEM_NOTKNOWN, system));
+          warnings.add(context.formatMessage(I18nConstants.UNKNOWN_CODESYSTEM, system));
         }
         return null;
       }

@@ -37,7 +37,7 @@ public class NodeStack {
     this.context = context;
     ids = new HashMap<>();
     this.element = element;
-    literalPath = (initialPath == null ? "" : initialPath+".") + element.getPath();
+    literalPath = (initialPath == null ? "" : initialPath+".") + buildPathForElement(element, true);
     workingLang = validationLanguage;
     if (!element.getName().equals(element.fhirType())) {
       logicalPaths = new HashSet<>();
@@ -45,11 +45,31 @@ public class NodeStack {
     }
   }
 
+  private String buildPathForElement(Element e, boolean first) {
+    if (e.getParentForValidator() != null) {
+      String node = e.getName().contains("/") ? e.getName().substring(e.getName().lastIndexOf("/")+1) : e.getName();
+      if (e.hasIndex() && e.getProperty().isList() && e.getSpecial() == null) {
+        node = node+"["+Integer.toString(e.getIndex())+"]";
+      }
+      if (!first && e.isResource()) {
+        node = node +"/*"+e.fhirType()+"/"+e.getIdBase()+"*/";
+      }
+      return buildPathForElement(e.getParentForValidator(), false)+"."+node;
+    } else {
+      return e.getPath();
+    }
+  }
+
   public NodeStack(IWorkerContext context, Element element, String refPath, String validationLanguage) {
     this.context = context;
     ids = new HashMap<>();
     this.element = element;
-    literalPath = refPath + "->" + element.getName();
+    int i = element.getName().indexOf(".");
+    if (i == -1) {
+      literalPath = refPath+".resolve().ofType(" + element.getName()+")";      
+    } else {
+      literalPath = refPath+".resolve().ofType(" + element.getName().substring(0, i)+")"+element.getName().substring(i);
+    }
     workingLang = validationLanguage;
   }
 

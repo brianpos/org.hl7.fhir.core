@@ -263,7 +263,6 @@ public class ClientUtils {
       request.addHeader("Accept", format);
       request.addHeader("Content-Type", format + ";charset=" + DEFAULT_CHARSET);
     }
-    request.addHeader("Accept-Charset", DEFAULT_CHARSET);
     if (headers != null) {
       for (Header header : headers) {
         request.addHeader(header);
@@ -626,7 +625,7 @@ public class ClientUtils {
       for (Header h : response.getAllHeaders()) {
         headers.add(h.toString());
       }
-      logger.logResponse(response.getStatusLine().toString(), headers, cnt);
+      logger.logResponse(response.getStatusLine().toString(), headers, cnt, 0);
     }
     return cnt;
   }

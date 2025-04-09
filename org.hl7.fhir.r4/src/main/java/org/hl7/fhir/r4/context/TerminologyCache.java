@@ -55,8 +55,10 @@ import org.hl7.fhir.r4.model.ValueSet.ValueSetExpansionContainsComponent;
 import org.hl7.fhir.r4.terminologies.ValueSetExpander.TerminologyServiceErrorClass;
 import org.hl7.fhir.r4.terminologies.ValueSetExpander.ValueSetExpansionOutcome;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 import org.hl7.fhir.utilities.validation.ValidationOptions;
 
@@ -77,6 +79,7 @@ import com.google.gson.JsonPrimitive;
  * @author graha
  *
  */
+@MarkedToMoveToAdjunctPackage
 public class TerminologyCache {
   public static final boolean TRANSIENT = false;
   public static final boolean PERMANENT = true;
@@ -352,7 +355,7 @@ public class TerminologyCache {
       return;
 
     try {
-      OutputStreamWriter sw = new OutputStreamWriter(new FileOutputStream(Utilities.path(folder, nc.name + ".cache")),
+      OutputStreamWriter sw = new OutputStreamWriter(ManagedFileAccess.outStream(Utilities.path(folder, nc.name + ".cache")),
           "UTF-8");
       sw.write(ENTRY_MARKER + "\r\n");
       JsonParser json = new JsonParser();
@@ -380,8 +383,8 @@ public class TerminologyCache {
     }
   }
 
-  private void load() throws FHIRException {
-    for (String fn : new File(folder).list()) {
+  private void load() throws FHIRException, IOException {
+    for (String fn : ManagedFileAccess.file(folder).list()) {
       if (fn.endsWith(".cache") && !fn.equals("validation.cache")) {
         try {
           // System.out.println("Load "+fn);
@@ -390,7 +393,7 @@ public class TerminologyCache {
           nc.name = title;
           caches.put(title, nc);
           System.out.print(" - load " + title + ".cache");
-          String src = TextFile.fileToString(Utilities.path(folder, fn));
+          String src = FileUtilities.fileToString(Utilities.path(folder, fn));
           if (src.startsWith("?"))
             src = src.substring(1);
           int i = src.indexOf(ENTRY_MARKER);

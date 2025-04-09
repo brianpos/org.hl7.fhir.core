@@ -2,28 +2,37 @@
 {"code" : {
   "system" : "http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes",
   "code" : "profile2"
-}, "valueSet" :null, "langs":"", "useServer":"true", "useClient":"false", "guessSystem":"false", "activeOnly":"false", "membershipOnly":"false", "displayWarningMode":"false", "versionFlexible":"false", "profile": {
+}, "valueSet" :null, "langs":"en-US", "useServer":"true", "useClient":"false", "guessSystem":"false", "activeOnly":"false", "membershipOnly":"false", "displayWarningMode":"false", "versionFlexible":"false", "profile": {
   "resourceType" : "Parameters",
   "parameter" : [{
     "name" : "profile-url",
     "valueString" : "http://hl7.org/fhir/ExpansionProfile/dc8fd4bc-091a-424a-8a3b-6198ef146891"
+  },
+  {
+    "name" : "displayLanguage",
+    "valueCode" : "en-US"
   }]
 }}####
 v: {
   "code" : "profile2",
-  "severity" : "warning",
+  "system" : "http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes",
+  "severity" : "error",
   "error" : "A definition for CodeSystem 'http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes' could not be found, so the code cannot be validated",
   "class" : "CODESYSTEM_UNSUPPORTED",
-  "server" : "http://local.fhir.org/r4",
+  "server" : "http://tx-dev.fhir.org/r5",
   "unknown-systems" : "http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes",
   "issues" : {
   "resourceType" : "OperationOutcome",
   "issue" : [{
     "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+      "valueString" : "UNKNOWN_CODESYSTEM"
+    },
+    {
       "url" : "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-server",
-      "valueUrl" : "http://local.fhir.org/r4"
+      "valueUrl" : "http://tx-dev.fhir.org/r5"
     }],
-    "severity" : "warning",
+    "severity" : "error",
     "code" : "not-found",
     "details" : {
       "coding" : [{
@@ -32,8 +41,8 @@ v: {
       }],
       "text" : "A definition for CodeSystem 'http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes' could not be found, so the code cannot be validated"
     },
-    "location" : ["CodeableConcept.coding[0].system"],
-    "expression" : ["CodeableConcept.coding[0].system"]
+    "location" : ["Coding.system"],
+    "expression" : ["Coding.system"]
   }]
 }
 
@@ -42,26 +51,35 @@ v: {
 {"code" : {
   "system" : "http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes",
   "code" : "profile1"
-}, "valueSet" :null, "langs":"", "useServer":"true", "useClient":"false", "guessSystem":"false", "activeOnly":"false", "membershipOnly":"false", "displayWarningMode":"false", "versionFlexible":"false", "profile": {
+}, "valueSet" :null, "langs":"en-US", "useServer":"true", "useClient":"false", "guessSystem":"false", "activeOnly":"false", "membershipOnly":"false", "displayWarningMode":"false", "versionFlexible":"false", "profile": {
   "resourceType" : "Parameters",
   "parameter" : [{
     "name" : "profile-url",
     "valueString" : "http://hl7.org/fhir/ExpansionProfile/dc8fd4bc-091a-424a-8a3b-6198ef146891"
+  },
+  {
+    "name" : "displayLanguage",
+    "valueCode" : "en-US"
   }]
 }}####
 v: {
   "code" : "profile1",
+  "system" : "http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes",
   "severity" : "error",
   "error" : "A definition for CodeSystem 'http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes' could not be found, so the code cannot be validated",
   "class" : "CODESYSTEM_UNSUPPORTED",
-  "server" : "http://local.fhir.org/r4",
+  "server" : "http://tx-dev.fhir.org/r5",
   "unknown-systems" : "http://hl7.org/fhir/test/CodeSystem/profile-slicing-codes",
   "issues" : {
   "resourceType" : "OperationOutcome",
   "issue" : [{
     "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+      "valueString" : "UNKNOWN_CODESYSTEM"
+    },
+    {
       "url" : "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-server",
-      "valueUrl" : "http://local.fhir.org/r4"
+      "valueUrl" : "http://tx-dev.fhir.org/r5"
     }],
     "severity" : "error",
     "code" : "not-found",

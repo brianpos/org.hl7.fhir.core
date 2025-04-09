@@ -36,7 +36,7 @@ import java.util.Map;
 
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.instance.model.api.IBase;
-import org.hl7.fhir.r5.model.Enumerations.FHIRVersion;
+import org.hl7.fhir.r5.fhirpath.FHIRPathEngine;
 import org.hl7.fhir.utilities.FhirPublication;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
@@ -258,37 +258,81 @@ public abstract class Base implements Serializable, IBase, IElement {
   }
 
 	// these 3 allow evaluation engines to get access to primitive values
+  
+  /**
+   * @return true if the data type is a primitive type and might have a primitive value 
+   *   (which will be accessed as a string, irrespective of the stated value)
+   */
 	public boolean isPrimitive() {
 		return false;
 	}
 	
+	/**
+	 * @return true if the type is boolean, and the primitive value can only be 'true' or 'false'
+	 */
   public boolean isBooleanPrimitive() {
     return false;
   }
 
-	public boolean hasPrimitiveValue() {
-		return isPrimitive();
-	}
-	
+  /**
+   * @return true if the type is primitive, and there's value (e.g. no Data-Absent-Reason extension etc)
+   */
+  public boolean hasPrimitiveValue() {
+    return primitiveValue() != null;
+  }
+  
+  /**
+   * @return true if the type is primitive, and there could be a value (irrespective of whether it's present e.g. no Data-Absent-Reason extension etc)
+   */
+  public boolean canHavePrimitiveValue() {
+    return false;
+  }
+  
+	/**
+	 * @return the primitive value if there is one, as a string irrespective of the actual type (e.g. dates converted to their FHIR string representation)
+	 *    return null if the value is not a primitive or there is no value (might be extensions instead)
+	 */
 	public String primitiveValue() {
 		return null;
 	}
 	
+  /**
+   * @return true if the type is date|dateTime|instant, and the primitive value is a date/time of some precision
+   */
   public boolean isDateTime() {
     return false;
   }
 
+  /**
+   * @return the date/time value if there is one, or null
+   */
   public BaseDateTimeType dateTimeValue() {
     return null;
   }
-  
+
+  /**
+   * @return the FHIR type name of the instance (not the java class name)
+   */
 	public abstract String fhirType() ;
-	
+
+	/**
+	 * Note that this is potentially misleading on ElementDefinition that has a 'type' 
+	 * property - don't mistakenly use this thinking it's going to look at ElementDefinition.type
+   *
+	 * @param name - fhir type name
+	 * @return- true if it 'has' this type (including by specialization)
+	 */
 	public boolean hasType(String... name) {
 		String t = fhirType();
-		for (String n : name)
+		for (String n : name) {
 		  if (n.equalsIgnoreCase(t))
 		  	return true;
+		  if (n.contains(".")) {
+		    String[] p = n.split("\\.");
+		    if (p.length == 2 && Utilities.existsInList(p[0], "FHIR", "CDA") && p[1].equalsIgnoreCase(t))
+	        return true;
+		  }
+		}
 		return false;
 	}
 	
@@ -585,4 +629,10 @@ public abstract class Base implements Serializable, IBase, IElement {
   }
 
   public abstract FhirPublication getFHIRPublicationVersion();
+  
+  public List<Base> executeFunction(FHIRPathEngine engine, Object appContext, List<Base> focus, String functionName, List<List<Base>> parameters) {
+    return new ArrayList<>();
+  }
+
+  
 }

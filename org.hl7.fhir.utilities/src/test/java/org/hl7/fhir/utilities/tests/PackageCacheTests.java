@@ -4,8 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.npm.CommonPackages;
 import org.hl7.fhir.utilities.npm.FilesystemPackageCacheManager;
 import org.hl7.fhir.utilities.npm.NpmPackage;
@@ -27,11 +28,11 @@ public class PackageCacheTests {
     npm = cache.loadPackage(CommonPackages.ID_PUBPACK, CommonPackages.VER_PUBPACK);
     npm.loadAllFiles();
     Assertions.assertNotNull(npm);
-    File dir = new File(Utilities.path("[tmp]", "cache"));
+    File dir = ManagedFileAccess.file(Utilities.path("[tmp]", "cache"));
     if (dir.exists()) {
-      Utilities.clearDirectory(dir.getAbsolutePath());
+      FileUtilities.clearDirectory(dir.getAbsolutePath());
     } else {
-      Utilities.createDirectory(dir.getAbsolutePath());
+      FileUtilities.createDirectory(dir.getAbsolutePath());
     }
     npm.save(dir);
     NpmPackage npm2 = cache.loadPackage(CommonPackages.ID_PUBPACK, "file:" + dir.getAbsolutePath());
@@ -76,8 +77,8 @@ public class PackageCacheTests {
     Assertions.assertEquals(uscore.version(), uscoreMin.version());
     Assertions.assertEquals(uscore.getFolders().size(), uscoreMin.getFolders().size());
     Assertions.assertEquals(uscore.list("package").size(), uscoreMin.list("package").size());
-    byte[] b1 = TextFile.streamToBytes(uscore.load(uscore.list("package").get(1)));
-    byte[] b2 = TextFile.streamToBytes(uscoreMin.load(uscore.list("package").get(1)));
+    byte[] b1 = FileUtilities.streamToBytes(uscore.load(uscore.list("package").get(1)));
+    byte[] b2 = FileUtilities.streamToBytes(uscoreMin.load(uscore.list("package").get(1)));
     Assertions.assertArrayEquals(b1, b2);    
   }
   

@@ -55,14 +55,16 @@ import org.hl7.fhir.dstu2.model.Resource;
 import org.hl7.fhir.dstu2.utils.SimpleWorkerContext;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.exceptions.FHIRFormatError;
-import org.hl7.fhir.utilities.CSFile;
-import org.hl7.fhir.utilities.CSFileInputStream;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.CSFile;
+import org.hl7.fhir.utilities.filesystem.CSFileInputStream;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
+@Deprecated
 public class ToolsHelper {
 
   public static void main(String[] args) {
@@ -93,7 +95,7 @@ public class ToolsHelper {
     } catch (Throwable e) {
       try {
         e.printStackTrace();
-        TextFile.stringToFile(e.toString(), (args.length == 0 ? "tools" : args[0]) + ".err");
+        FileUtilities.stringToFile(e.toString(), (args.length == 0 ? "tools" : args[0]) + ".err");
       } catch (Exception e1) {
         e1.printStackTrace();
       }
@@ -103,13 +105,13 @@ public class ToolsHelper {
   private void executeExamples(String[] args) throws IOException {
     try {
       @SuppressWarnings("unchecked")
-      List<String> lines = FileUtils.readLines(new File(args[1]), "UTF-8");
+      List<String> lines = FileUtils.readLines(ManagedFileAccess.file(args[1]), "UTF-8");
       String srcDir = lines.get(0);
       lines.remove(0);
       processExamples(srcDir, lines);
-      TextFile.stringToFile("ok", Utilities.changeFileExt(args[1], ".out"));
+      FileUtilities.stringToFile("ok", FileUtilities.changeFileExt(args[1], ".out"));
     } catch (Exception e) {
-      TextFile.stringToFile(e.getMessage(), Utilities.changeFileExt(args[1], ".out"));
+      FileUtilities.stringToFile(e.getMessage(), FileUtilities.changeFileExt(args[1], ".out"));
     }
   }
 
@@ -179,7 +181,7 @@ public class ToolsHelper {
 //    } else 
     if (definitions.startsWith("https:") || definitions.startsWith("http:")) {
       defn = loadFromUrl(definitions);
-    } else if (new File(definitions).exists()) {
+    } else if (ManagedFileAccess.file(definitions).exists()) {
       defn = loadFromFile(definitions);
     } else
       throw new FHIRException("Unable to find FHIR validation Pack (source = " + definitions + ")");
@@ -193,7 +195,7 @@ public class ToolsHelper {
   }
 
   private byte[] loadFromFile(String src) throws IOException {
-    FileInputStream in = new FileInputStream(src);
+    FileInputStream in = ManagedFileAccess.inStream(src);
     byte[] b = new byte[in.available()];
     in.read(b);
     in.close();
@@ -220,10 +222,10 @@ public class ToolsHelper {
 
   public void executeFragments(String[] args) throws IOException {
     try {
-      File source = new CSFile(args[1]);
+      File source = ManagedFileAccess.csfile(args[1]);
       if (!source.exists())
         throw new FHIRException("Source File \"" + source.getAbsolutePath() + "\" not found");
-      XmlPullParser xpp = loadXml(new FileInputStream(source));
+      XmlPullParser xpp = loadXml(ManagedFileAccess.inStream(source));
       nextNoWhitespace(xpp);
       if (!xpp.getName().equals("tests"))
         throw new FHIRFormatError("Unable to parse file - starts with " + xpp.getName());
@@ -260,19 +262,19 @@ public class ToolsHelper {
       }
       s.append("</results>\r\n");
 
-      TextFile.stringToFile(s.toString(), args[2]);
+      FileUtilities.stringToFile(s.toString(), args[2]);
     } catch (Exception e) {
       e.printStackTrace();
-      TextFile.stringToFile(e.getMessage(), args[2]);
+      FileUtilities.stringToFile(e.getMessage(), args[2]);
     }
   }
 
   public void executeRoundTrip(String[] args) throws IOException, FHIRException {
     FileInputStream in;
-    File source = new CSFile(args[1]);
-    File dest = new CSFile(args[2]);
+    File source = ManagedFileAccess.csfile(args[1]);
+    File dest = ManagedFileAccess.csfile(args[2]);
     if (args.length >= 4) {
-      Utilities.copyFile(args[1], args[3]);
+      FileUtilities.copyFile(args[1], args[3]);
     }
 
     if (!source.exists())
@@ -286,19 +288,19 @@ public class ToolsHelper {
     parser.setOutputStyle(OutputStyle.PRETTY);
     parser.compose(json, rf);
     json.close();
-    TextFile.stringToFile(new String(json.toByteArray()), Utilities.changeFileExt(dest.getAbsolutePath(), ".json"));
+    FileUtilities.stringToFile(new String(json.toByteArray()), FileUtilities.changeFileExt(dest.getAbsolutePath(), ".json"));
     rf = pj.parse(new ByteArrayInputStream(json.toByteArray()));
-    FileOutputStream s = new FileOutputStream(dest);
+    FileOutputStream s = ManagedFileAccess.outStream(dest);
     new XmlParser().compose(s, rf, true);
     s.close();
   }
 
   public String executeJson(String[] args) throws IOException, FHIRException {
     FileInputStream in;
-    File source = new CSFile(args[1]);
-    File dest = new CSFile(args[2]);
-    File destc = new CSFile(Utilities.changeFileExt(args[2], ".canonical.json"));
-    File destt = new CSFile(args[2] + ".tmp");
+    File source = ManagedFileAccess.csfile(args[1]);
+    File dest = ManagedFileAccess.csfile(args[2]);
+    File destc = ManagedFileAccess.csfile(FileUtilities.changeFileExt(args[2], ".canonical.json"));
+    File destt = ManagedFileAccess.csfile(args[2] + ".tmp");
 
     if (!source.exists())
       throw new FHIRException("Source File \"" + source.getAbsolutePath() + "\" not found");
@@ -307,25 +309,25 @@ public class ToolsHelper {
     Resource rf = p.parse(in);
     JsonParser json = new JsonParser();
     json.setOutputStyle(OutputStyle.PRETTY);
-    FileOutputStream s = new FileOutputStream(dest);
+    FileOutputStream s = ManagedFileAccess.outStream(dest);
     json.compose(s, rf);
     s.close();
     json.setOutputStyle(OutputStyle.CANONICAL);
-    s = new FileOutputStream(destc);
+    s = ManagedFileAccess.outStream(destc);
     json.compose(s, rf);
     s.close();
     json.setSuppressXhtml("Snipped for Brevity");
     json.setOutputStyle(OutputStyle.PRETTY);
-    s = new FileOutputStream(destt);
+    s = ManagedFileAccess.outStream(destt);
     json.compose(s, rf);
     s.close();
-    return TextFile.fileToString(destt.getAbsolutePath());
+    return FileUtilities.fileToString(destt.getAbsolutePath());
   }
 
   public void executeCanonicalXml(String[] args) throws FHIRException, IOException {
     FileInputStream in;
-    File source = new CSFile(args[1]);
-    File dest = new CSFile(args[2]);
+    File source = ManagedFileAccess.csfile(args[1]);
+    File dest = ManagedFileAccess.csfile(args[2]);
 
     if (!source.exists())
       throw new FHIRException("Source File \"" + source.getAbsolutePath() + "\" not found");
@@ -334,11 +336,11 @@ public class ToolsHelper {
     Resource rf = p.parse(in);
     XmlParser cxml = new XmlParser();
     cxml.setOutputStyle(OutputStyle.NORMAL);
-    cxml.compose(new FileOutputStream(dest), rf);
+    cxml.compose(ManagedFileAccess.outStream(dest), rf);
   }
 
   private void executeVersion(String[] args) throws IOException {
-    TextFile.stringToFile(org.hl7.fhir.dstu2.utils.Version.VERSION + ":" + Constants.VERSION, args[1]);
+    FileUtilities.stringToFile(org.hl7.fhir.dstu2.utils.Version.VERSION + ":" + Constants.VERSION, args[1]);
   }
 
   public void processExamples(String rootDir, Collection<String> list) throws FHIRException {
@@ -347,7 +349,7 @@ public class ToolsHelper {
         String filename = rootDir + n + ".xml";
         // 1. produce canonical XML
         CSFileInputStream source = new CSFileInputStream(filename);
-        FileOutputStream dest = new FileOutputStream(Utilities.changeFileExt(filename, ".canonical.xml"));
+        FileOutputStream dest = ManagedFileAccess.outStream(FileUtilities.changeFileExt(filename, ".canonical.xml"));
         XmlParser p = new XmlParser();
         Resource r = p.parse(source);
         XmlParser cxml = new XmlParser();
@@ -356,14 +358,14 @@ public class ToolsHelper {
 
         // 2. produce JSON
         source = new CSFileInputStream(filename);
-        dest = new FileOutputStream(Utilities.changeFileExt(filename, ".json"));
+        dest = ManagedFileAccess.outStream(FileUtilities.changeFileExt(filename, ".json"));
         r = p.parse(source);
         JsonParser json = new JsonParser();
         json.setOutputStyle(OutputStyle.PRETTY);
         json.compose(dest, r);
         json = new JsonParser();
         json.setOutputStyle(OutputStyle.CANONICAL);
-        dest = new FileOutputStream(Utilities.changeFileExt(filename, ".canonical.json"));
+        dest = ManagedFileAccess.outStream(FileUtilities.changeFileExt(filename, ".canonical.json"));
         json.compose(dest, r);
       } catch (Exception e) {
         e.printStackTrace();
@@ -383,23 +385,23 @@ public class ToolsHelper {
         String tmp = tmpDir + n.replace(File.separator, "-") + ".tmp";
         String dest = tmpDir + n.replace(File.separator, "-") + ".java.xml";
 
-        FileInputStream in = new FileInputStream(source);
+        FileInputStream in = ManagedFileAccess.inStream(source);
         XmlParser xp = new XmlParser();
         Resource r = xp.parse(in);
         System.err.print(".");
         JsonParser jp = new JsonParser();
-        FileOutputStream out = new FileOutputStream(tmp);
+        FileOutputStream out = ManagedFileAccess.outStream(tmp);
         jp.setOutputStyle(OutputStyle.PRETTY);
         jp.compose(out, r);
         out.close();
         r = null;
         System.err.print(".");
 
-        in = new FileInputStream(tmp);
+        in = ManagedFileAccess.inStream(tmp);
         System.err.print(",");
         r = jp.parse(in);
         System.err.print(".");
-        out = new FileOutputStream(dest);
+        out = ManagedFileAccess.outStream(dest);
         new XmlParser().compose(out, r, true);
         System.err.println("!");
         out.close();
@@ -415,15 +417,15 @@ public class ToolsHelper {
   private void executeTest(String[] args) throws Throwable {
     try {
       @SuppressWarnings("unchecked")
-      List<String> lines = FileUtils.readLines(new File(args[1]), "UTF-8");
+      List<String> lines = FileUtils.readLines(ManagedFileAccess.file(args[1]), "UTF-8");
       String srcDir = lines.get(0);
       lines.remove(0);
       String dstDir = lines.get(0).trim();
       lines.remove(0);
       testRoundTrip(srcDir, dstDir, lines);
-      TextFile.stringToFile("ok", Utilities.changeFileExt(args[1], ".out"));
+      FileUtilities.stringToFile("ok", FileUtilities.changeFileExt(args[1], ".out"));
     } catch (Exception e) {
-      TextFile.stringToFile(e.getMessage(), Utilities.changeFileExt(args[1], ".out"));
+      FileUtilities.stringToFile(e.getMessage(), FileUtilities.changeFileExt(args[1], ".out"));
     }
   }
 }

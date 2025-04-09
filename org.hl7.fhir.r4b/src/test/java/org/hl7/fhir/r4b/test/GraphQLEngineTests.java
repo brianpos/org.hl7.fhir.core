@@ -22,8 +22,9 @@ import org.hl7.fhir.r4b.model.DomainResource;
 import org.hl7.fhir.r4b.model.Resource;
 import org.hl7.fhir.r4b.test.utils.TestingUtilities;
 import org.hl7.fhir.r4b.utils.GraphQLEngine;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.graphql.*;
 import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.junit.jupiter.api.Assertions;
@@ -98,10 +99,10 @@ public class GraphQLEngineTests implements IGraphQLStorageServices {
       gql.getOutput().setWriteWrapper(false);
       gql.getOutput().write(actualStringBuilder, 0);
       IOUtils.copy(TestingUtilities.loadTestResourceStream("r4b", "graphql", source),
-          new FileOutputStream(TestingUtilities.tempFile("graphql", source)));
+          ManagedFileAccess.outStream(TestingUtilities.tempFile("graphql", source)));
       IOUtils.copy(TestingUtilities.loadTestResourceStream("r4b", "graphql", output),
-          new FileOutputStream(TestingUtilities.tempFile("graphql", output)));
-      TextFile.stringToFile(actualStringBuilder.toString(), TestingUtilities.tempFile("graphql", output + ".out"));
+          ManagedFileAccess.outStream(TestingUtilities.tempFile("graphql", output)));
+      FileUtilities.stringToFile(actualStringBuilder.toString(), TestingUtilities.tempFile("graphql", output + ".out"));
       msg = TestingUtilities.checkJsonIsSame(TestingUtilities.tempFile("graphql", output + ".out"),
           TestingUtilities.tempFile("graphql", output));
       Assertions.assertTrue(Utilities.noString(msg), msg);

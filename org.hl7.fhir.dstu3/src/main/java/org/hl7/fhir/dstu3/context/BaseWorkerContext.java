@@ -32,8 +32,6 @@ package org.hl7.fhir.dstu3.context;
 
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -92,8 +90,10 @@ import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.exceptions.NoTerminologyServiceException;
 import org.hl7.fhir.exceptions.TerminologyServiceException;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
+import org.hl7.fhir.utilities.UUIDUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.i18n.I18nBase;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueType;
@@ -103,6 +103,8 @@ import com.google.gson.JsonSyntaxException;
 
 import ca.uhn.fhir.rest.api.Constants;
 
+
+@Deprecated
 public abstract class BaseWorkerContext extends I18nBase implements IWorkerContext {
 
   // all maps are to the full URI
@@ -323,7 +325,7 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
       String cacheFn = null;
       if (cache != null) {
         cacheFn = Utilities.path(cache, determineCacheId(vs, heirarchical) + ".json");
-        if (new File(cacheFn).exists()) {
+        if (ManagedFileAccess.file(cacheFn).exists()) {
           return loadFromCache(vs.copy(), cacheFn);
         }
       }
@@ -335,8 +337,8 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
           .expand(vs, expProfile.setExcludeNested(!heirarchical));
         if (vse.getValueset() != null) {
           if (cache != null) {
-            FileOutputStream s = new FileOutputStream(cacheFn);
-            newJsonParser().compose(new FileOutputStream(cacheFn), vse.getValueset());
+            FileOutputStream s = ManagedFileAccess.outStream(cacheFn);
+            newJsonParser().compose(ManagedFileAccess.outStream(cacheFn), vse.getValueset());
             s.close();
           }
         }
@@ -368,7 +370,7 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
   private ValueSetExpansionOutcome loadFromCache(ValueSet vs, String cacheFn)
     throws FileNotFoundException, Exception {
     JsonParser parser = new JsonParser();
-    Resource r = parser.parse(new FileInputStream(cacheFn));
+    Resource r = parser.parse(ManagedFileAccess.inStream(cacheFn));
     if (r instanceof OperationOutcome) {
       return new ValueSetExpansionOutcome(
         ((OperationOutcome) r).getIssue().get(0).getDetails().getText(),
@@ -382,7 +384,7 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
 
   private void saveToCache(Resource res, String cacheFn) throws FileNotFoundException, Exception {
     JsonParser parser = new JsonParser();
-    parser.compose(new FileOutputStream(cacheFn), res);
+    parser.compose(ManagedFileAccess.outStream(cacheFn), res);
   }
 
   private String determineCacheId(ValueSet vs, boolean heirarchical) throws Exception {
@@ -405,7 +407,7 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
     }
     s = s + "-" + Boolean.toString(heirarchical);
     String r = Integer.toString(s.hashCode());
-    //    TextFile.stringToFile(s, Utilities.path(cache, r+".id.json"));
+    //    FileUtilities.stringToFile(s, Utilities.path(cache, r+".id.json"));
     return r;
   }
 
@@ -715,10 +717,10 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
     if (fn == null) {
       return null;
     }
-    if (!(new File(fn).exists())) {
+    if (!(ManagedFileAccess.file(fn).exists())) {
       return null;
     }
-    String cnt = TextFile.fileToString(fn);
+    String cnt = FileUtilities.fileToString(fn);
     if (cnt.startsWith("!error: ")) {
       return new ValidationResult(IssueSeverity.ERROR, cnt.substring(8));
     } else if (cnt.startsWith("!warning: ")) {
@@ -733,12 +735,12 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
       return;
     }
     if (res.getDisplay() != null) {
-      TextFile.stringToFile(res.getDisplay(), cacheName);
+      FileUtilities.stringToFile(res.getDisplay(), cacheName);
     } else if (res.getMessage() != null) {
       if (res.getSeverity() == IssueSeverity.WARNING) {
-        TextFile.stringToFile("!warning: " + res.getMessage(), cacheName);
+        FileUtilities.stringToFile("!warning: " + res.getMessage(), cacheName);
       } else {
-        TextFile.stringToFile("!error: " + res.getMessage(), cacheName);
+        FileUtilities.stringToFile("!error: " + res.getMessage(), cacheName);
       }
     }
   }
@@ -868,7 +870,7 @@ public abstract class BaseWorkerContext extends I18nBase implements IWorkerConte
     ConceptSetComponent vsi) {
     try {
       ValueSet vs = new ValueSet();
-      vs.setUrl(Utilities.makeUuidUrn());
+      vs.setUrl(UUIDUtilities.makeUuidUrn());
       vs.getCompose().addInclude(vsi);
       return verifyCodeExternal(vs,
         new Coding().setSystem(system).setCode(code).setDisplay(display), true);

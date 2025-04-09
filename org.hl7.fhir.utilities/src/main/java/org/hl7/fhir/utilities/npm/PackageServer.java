@@ -6,9 +6,9 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
-import org.hl7.fhir.utilities.SimpleHTTPClient;
+import org.hl7.fhir.utilities.http.HTTPAuthenticationMode;
 import org.hl7.fhir.utilities.settings.FhirSettings;
-import org.hl7.fhir.utilities.settings.PackageServerPOJO;
+import org.hl7.fhir.utilities.settings.ServerDetailsPOJO;
 
 import lombok.Getter;
 
@@ -22,14 +22,15 @@ public class PackageServer {
 
   public PackageServer(String url) {
     this.url = url;
-    authenticationMode = SimpleHTTPClient.AuthenticationMode.NONE;
+    authenticationMode = HTTPAuthenticationMode.NONE;
     serverType = PackageServerType.FHIR;
   }
 
+  @Getter
   private String url;
 
   @Getter
-  private  SimpleHTTPClient.AuthenticationMode authenticationMode;
+  private HTTPAuthenticationMode authenticationMode;
 
   @Getter
   private PackageServerType serverType;
@@ -42,12 +43,14 @@ public class PackageServer {
 
   @Getter
   private String token;
-  public String getUrl() {
-    return url;
-  }
 
-  public static final String PRIMARY_SERVER = "https://packages.fhir.org";
-  public static final String SECONDARY_SERVER = "https://packages2.fhir.org/packages";
+  @Getter
+  private String apiKey;
+
+
+
+  public static final String SECONDARY_SERVER = "https://packages.fhir.org";
+  public static final String PRIMARY_SERVER = "https://packages2.fhir.org/packages";
 
   public static PackageServer primaryServer() {
     return new PackageServer(PRIMARY_SERVER);
@@ -64,28 +67,58 @@ public class PackageServer {
     return servers;
   }
 
-  public static PackageServer getPackageServerFromPOJO(PackageServerPOJO pojo) {
+  public static PackageServer getPackageServerFromPOJO(ServerDetailsPOJO pojo) {
     return new PackageServer(pojo.getUrl())
       .withAuthenticationMode(getModeFromPOJO(pojo))
       .withServerType(
-        pojo.getServerType() != null && pojo.getServerType().equalsIgnoreCase("npm") ? PackageServerType.NPM : PackageServerType.FHIR
+        getPackageServerType(pojo.getType())
       )
       .withUsername(pojo.getUsername())
       .withPassword(pojo.getPassword())
-      .withToken(pojo.getToken());
+      .withToken(pojo.getToken())
+      .withApiKey(pojo.getApikey());
+
+  }
+
+  private static boolean isPackageServer(String serverType) {
+    if (serverType == null) {
+      return false;
+    }
+    if (serverType.equals("fhir-package")) {
+      return true;
+    }
+    if (serverType.equals("npm-package")) {
+      return true;
+    }
+    return false;
+  }
+
+  private static PackageServerType getPackageServerType(String serverType) {
+    if (serverType == null) {
+      return null;
+    }
+    if (serverType.equals("fhir-package")) {
+      return PackageServerType.FHIR;
+    }
+    if (serverType.equals("npm-package")) {
+      return PackageServerType.NPM;
+    }
+    return null;
   }
 
   @Nullable
-  private static SimpleHTTPClient.AuthenticationMode getModeFromPOJO(PackageServerPOJO pojo) {
-    if (pojo.getAuthenticationType().equalsIgnoreCase("basic")) return  SimpleHTTPClient.AuthenticationMode.BASIC;
-    if (pojo.getAuthenticationType().equalsIgnoreCase("token")) return  SimpleHTTPClient.AuthenticationMode.TOKEN;
+  private static HTTPAuthenticationMode getModeFromPOJO(ServerDetailsPOJO pojo) {
+    if (pojo.getAuthenticationType().equalsIgnoreCase("basic")) return HTTPAuthenticationMode.BASIC;
+    if (pojo.getAuthenticationType().equalsIgnoreCase("token")) return HTTPAuthenticationMode.TOKEN;
+    if (pojo.getAuthenticationType().equalsIgnoreCase("apikey")) return HTTPAuthenticationMode.APIKEY;
     return null;
   }
 
   public static List<PackageServer> getConfiguredServers() {
-    return FhirSettings.getPackageServers().stream().map(
-      PackageServer::getPackageServerFromPOJO
-    ).collect(Collectors.toList());
+    return FhirSettings.getServers().stream()
+      .filter(serverDetailsPOJO -> isPackageServer(serverDetailsPOJO.getType()))
+      .map(PackageServer::getPackageServerFromPOJO)
+      .collect(Collectors.toList());
   }
 
   @Override
@@ -100,10 +133,11 @@ public class PackageServer {
     packageServer.username = this.username;
     packageServer.password = this.password;
     packageServer.token = this.token;
+    packageServer.apiKey = this.apiKey;
     return packageServer;
   }
 
-  public PackageServer withAuthenticationMode( SimpleHTTPClient.AuthenticationMode mode) {
+  public PackageServer withAuthenticationMode(HTTPAuthenticationMode mode) {
     PackageServer packageServer = this.copy();
     packageServer.authenticationMode = mode;
     return packageServer;
@@ -130,6 +164,12 @@ public class PackageServer {
   public PackageServer withToken(String token) {
     PackageServer packageServer = this.copy();
     packageServer.token = token;
+    return packageServer;
+  }
+
+  public PackageServer withApiKey(String apiKey) {
+    PackageServer packageServer = this.copy();
+    packageServer.apiKey = apiKey;
     return packageServer;
   }
 }

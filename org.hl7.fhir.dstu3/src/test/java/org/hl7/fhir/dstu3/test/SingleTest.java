@@ -30,9 +30,11 @@ package org.hl7.fhir.dstu3.test;
 
 import java.io.File;
 
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.junit.jupiter.api.Disabled;
 
 @Disabled
+@Deprecated
 public class SingleTest {
 
   /**
@@ -41,7 +43,7 @@ public class SingleTest {
   public static void main(String[] args) {
     try {
       ResourceTest r = new ResourceTest();
-      r.setSource(new File("C:\\work\\org.hl7.fhir\\fhir-test-cases\\r3\\ActivityDefinition-referralPrimaryCareMentalHealth.json"));
+      r.setSource(ManagedFileAccess.file("C:\\work\\org.hl7.fhir\\fhir-test-cases\\r3\\ActivityDefinition-referralPrimaryCareMentalHealth.json"));
       r.test();
       System.out.println("Completed OK");
     } catch (Exception e) {

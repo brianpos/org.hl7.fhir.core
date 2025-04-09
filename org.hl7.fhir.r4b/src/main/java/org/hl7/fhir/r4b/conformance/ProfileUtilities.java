@@ -35,16 +35,7 @@ import java.io.FileReader;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.exceptions.DefinitionException;
@@ -118,9 +109,11 @@ import org.hl7.fhir.r4b.utils.formats.CSVWriter;
 import org.hl7.fhir.utilities.CommaSeparatedStringBuilder;
 import org.hl7.fhir.utilities.FhirPublication;
 import org.hl7.fhir.utilities.MarkDownProcessor;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
 import org.hl7.fhir.utilities.VersionUtilities;
 import org.hl7.fhir.utilities.i18n.I18nConstants;
+import org.hl7.fhir.utilities.i18n.RenderingI18nContext;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueType;
@@ -157,6 +150,7 @@ import org.hl7.fhir.utilities.xml.SchematronWriter.Section;
  * @author Grahame
  *
  */
+@MarkedToMoveToAdjunctPackage
 public class ProfileUtilities extends TranslatingUtilities {
 
   public class ElementDefinitionResolution {
@@ -329,6 +323,10 @@ public class ProfileUtilities extends TranslatingUtilities {
   private static final boolean COPY_BINDING_EXTENSIONS = false;
   private static final boolean DONT_DO_THIS = false;
   private final boolean ADD_REFERENCE_TO_TABLE = true;
+
+  private final List<String> NONPROPAGATING_EXTENSIONS = new ArrayList<>(Arrays.asList(new String[] {
+    "http://hl7.org/fhir/StructureDefinition/structuredefinition-standards-status",
+    "http://hl7.org/fhir/StructureDefinition/structuredefinition-normative-version"}));
 
   private boolean useTableForFixedValues = true;
   private boolean debug;
@@ -1223,7 +1221,7 @@ public class ProfileUtilities extends TranslatingUtilities {
       if (!currentBase.hasSlicing() || cpath.equals(typeSlicingPath)) {
         if (diffMatches.isEmpty()) { // the differential doesn't say anything about this item
           // so we just copy it in
-          ElementDefinition outcome = updateURLs(url, webUrl, currentBase.copy());
+          ElementDefinition outcome = updateURLs(url, webUrl, stripNonPropagatingExtensions(currentBase.copy()));
           outcome.setPath(fixedPathDest(contextPathDst, outcome.getPath(), redirector, contextPathSrc));
           updateFromBase(outcome, currentBase);
           updateConstraintSources(outcome, srcSD.getUrl());
@@ -1420,7 +1418,7 @@ public class ProfileUtilities extends TranslatingUtilities {
             }
           }
           if (template == null)
-            template = currentBase.copy();
+            template = stripNonPropagatingExtensions(currentBase.copy());
           else
             // some of what's in currentBase overrides template
             template = fillOutFromBase(template, currentBase);
@@ -1442,7 +1440,6 @@ public class ProfileUtilities extends TranslatingUtilities {
             }
           }
           updateFromDefinition(outcome, diffMatches.get(0), profileName, trimDifferential, url, srcSD);
-          removeStatusExtensions(outcome);
 //          if (outcome.getPath().endsWith("[x]") && outcome.getType().size() == 1 && !outcome.getType().get(0).getCode().equals("*") && !diffMatches.get(0).hasSlicing()) // if the base profile allows multiple types, but the profile only allows one, rename it
 //            outcome.setPath(outcome.getPath().substring(0, outcome.getPath().length()-3)+Utilities.capitalize(outcome.getType().get(0).getCode()));
           outcome.setSlicing(null);
@@ -1763,7 +1760,7 @@ public class ProfileUtilities extends TranslatingUtilities {
             start++;
           } else {
             // we're just going to accept the differential slicing at face value
-            ElementDefinition outcome = updateURLs(url, webUrl, currentBase.copy());
+            ElementDefinition outcome = updateURLs(url, webUrl, stripNonPropagatingExtensions(currentBase.copy()));
             outcome.setPath(fixedPathDest(contextPathDst, outcome.getPath(), redirector, contextPathSrc));
             updateFromBase(outcome, currentBase);
 
@@ -1780,7 +1777,6 @@ public class ProfileUtilities extends TranslatingUtilities {
             // Else we'll treat it as the base definition of the slice.
             if (!diffMatches.get(0).hasSliceName()) {
               updateFromDefinition(outcome, diffMatches.get(0), profileName, trimDifferential, url, srcSD);
-              removeStatusExtensions(outcome);
               if (!outcome.hasContentReference() && !outcome.hasType()) {
                 throw new DefinitionException(context.formatMessage(I18nConstants.NOT_DONE_YET));
               }
@@ -1850,7 +1846,7 @@ public class ProfileUtilities extends TranslatingUtilities {
         if (diffMatches.isEmpty()) {
           if (hasInnerDiffMatches(differential, path, diffCursor, diffLimit, base.getElement(), true)) {
             // so we just copy it in
-            ElementDefinition outcome = updateURLs(url, webUrl, currentBase.copy());
+            ElementDefinition outcome = updateURLs(url, webUrl, stripNonPropagatingExtensions(currentBase.copy()));
             outcome.setPath(fixedPathDest(contextPathDst, outcome.getPath(), redirector, contextPathSrc));
             updateFromBase(outcome, currentBase);
             markDerived(outcome);
@@ -2097,7 +2093,7 @@ public class ProfileUtilities extends TranslatingUtilities {
                   I18nConstants.SLICING_RULES_ON_DIFFERENTIAL__DO_NOT_MATCH_THOSE_ON_BASE___RULE___,
                   summarizeSlicing(dSlice), summarizeSlicing(bSlice), path, contextName));
           }
-          ElementDefinition outcome = updateURLs(url, webUrl, currentBase.copy());
+          ElementDefinition outcome = updateURLs(url, webUrl, stripNonPropagatingExtensions(currentBase.copy()));
           outcome.setPath(fixedPathDest(contextPathDst, outcome.getPath(), redirector, contextPathSrc));
           updateFromBase(outcome, currentBase);
           if (diffMatches.get(0).hasSlicing() || !diffMatches.get(0).hasSliceName()) {
@@ -2106,7 +2102,6 @@ public class ProfileUtilities extends TranslatingUtilities {
                                                                                                 // we don't want to
                                                                                                 // update the unsliced
                                                                                                 // description
-            removeStatusExtensions(outcome);
           } else if (!diffMatches.get(0).hasSliceName()) {
             diffMatches.get(0).setUserData(GENERATED_IN_SNAPSHOT, outcome); // because of updateFromDefinition isn't
                                                                             // called
@@ -2230,7 +2225,7 @@ public class ProfileUtilities extends TranslatingUtilities {
                 if (baseItem.getSliceName().equals(diffItem.getSliceName()))
                   throw new DefinitionException(
                       context.formatMessage(I18nConstants.NAMED_ITEMS_ARE_OUT_OF_ORDER_IN_THE_SLICE));
-              outcome = updateURLs(url, webUrl, currentBase.copy());
+              outcome = updateURLs(url, webUrl, stripNonPropagatingExtensions(currentBase.copy()));
               // outcome = updateURLs(url, diffItem.copy());
               outcome.setPath(fixedPathDest(contextPathDst, outcome.getPath(), redirector, contextPathSrc));
               updateFromBase(outcome, currentBase);
@@ -2240,7 +2235,6 @@ public class ProfileUtilities extends TranslatingUtilities {
                 throw new DefinitionException(context.formatMessage(I18nConstants.ADDING_WRONG_PATH));
               result.getElement().add(outcome);
               updateFromDefinition(outcome, diffItem, profileName, trimDifferential, url, srcSD);
-              removeStatusExtensions(outcome);
               // --- LM Added this
               diffCursor = differential.getElement().indexOf(diffItem) + 1;
               if (!outcome.getType().isEmpty()
@@ -2318,6 +2312,25 @@ public class ProfileUtilities extends TranslatingUtilities {
         throw new Error(context.formatMessage(I18nConstants.NULL_MIN));
     }
     return res;
+  }
+
+  /*
+   * Some extensions we don't want to propagate.  For example, the fact a resource is normative doesn't mean a profile on the resource is normative.
+   * Specific rules:
+   *  - standards status of 'normative' never propagates
+   *  - normative-since never propagates
+   *  - standards status doesn't propagate at the root, but *does* propagate on individual elements
+   *    - An element that's 'draft' in a resource still has to be draft in a profile
+   *    - There's a slight funkiness here if you have a draft profile that's inheriting from a normative resource with certain STU elements, but the intention remains clear
+   */
+  private ElementDefinition stripNonPropagatingExtensions(ElementDefinition e) {
+    if (e.hasExtension()) {
+      if (e.hasExtension(ToolingExtensions.EXT_NORMATIVE_VERSION))
+        e.removeExtension(ToolingExtensions.EXT_NORMATIVE_VERSION);
+      if (!e.getPath().contains(".") && e.hasExtension(ToolingExtensions.EXT_STANDARDS_STATUS))
+        e.removeExtension(ToolingExtensions.EXT_STANDARDS_STATUS);
+    }
+    return e;
   }
 
   private ElementDefinition getById(List<ElementDefinition> list, String baseId) {
@@ -2518,17 +2531,6 @@ public class ProfileUtilities extends TranslatingUtilities {
     } else {
       return webUrl;
     }
-  }
-
-  private void removeStatusExtensions(ElementDefinition outcome) {
-    outcome.removeExtension(ToolingExtensions.EXT_FMM_LEVEL);
-    outcome.removeExtension(ToolingExtensions.EXT_FMM_SUPPORT);
-    outcome.removeExtension(ToolingExtensions.EXT_FMM_DERIVED);
-    outcome.removeExtension(ToolingExtensions.EXT_STANDARDS_STATUS);
-    outcome.removeExtension(ToolingExtensions.EXT_NORMATIVE_VERSION);
-    outcome.removeExtension(ToolingExtensions.EXT_WORKGROUP);
-    outcome.removeExtension(ToolingExtensions.EXT_FMM_SUPPORT);
-    outcome.removeExtension(ToolingExtensions.EXT_FMM_DERIVED);
   }
 
   private String descED(List<ElementDefinition> list, int index) {
@@ -3874,8 +3876,7 @@ public class ProfileUtilities extends TranslatingUtilities {
   public XhtmlNode generateExtensionTable(String defFile, StructureDefinition ed, String imageFolder,
       boolean inlineGraphics, boolean full, String corePath, String imagePath, Set<String> outputTracker,
       RenderingContext rc) throws IOException, FHIRException {
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, inlineGraphics, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, inlineGraphics, true);
     TableModel model = gen.initNormalTable(corePath, false, true, ed.getId() + (full ? "f" : "n"), true,
         TableGenerationMode.XHTML);
 
@@ -4443,8 +4444,7 @@ public class ProfileUtilities extends TranslatingUtilities {
       boolean logicalModel, boolean allInvariants, Set<String> outputTracker, boolean active, boolean mustSupport,
       RenderingContext rc) throws IOException, FHIRException {
     assert (diff != snapshot);// check it's ok to get rid of one of these
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, inlineGraphics, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, inlineGraphics, true);
     TableModel model = gen.initNormalTable(corePath, false, true, profile.getId() + (diff ? "d" : "s"), active,
         active ? TableGenerationMode.XHTML : TableGenerationMode.XML);
     List<ElementDefinition> list = new ArrayList<>();
@@ -4545,8 +4545,7 @@ public class ProfileUtilities extends TranslatingUtilities {
   public XhtmlNode generateGrid(String defFile, StructureDefinition profile, String imageFolder, boolean inlineGraphics,
       String profileBaseFileName, String corePath, String imagePath, Set<String> outputTracker)
       throws IOException, FHIRException {
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, inlineGraphics, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, inlineGraphics, true);
     TableModel model = gen.initGridTable(corePath, profile.getId());
     List<ElementDefinition> list = profile.getSnapshot().getElement();
     List<StructureDefinition> profiles = new ArrayList<StructureDefinition>();
@@ -7116,8 +7115,7 @@ public class ProfileUtilities extends TranslatingUtilities {
 
   public XhtmlNode generateSpanningTable(StructureDefinition profile, String imageFolder, boolean onlyConstraints,
       String constraintPrefix, Set<String> outputTracker) throws IOException, FHIRException {
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(imageFolder, false, true);
-    gen.setTranslator(getTranslator());
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), imageFolder, false, true);
     TableModel model = initSpanningTable(gen, "", false, profile.getId());
     Set<String> processed = new HashSet<String>();
     SpanEntry span = buildSpanningTable("(focus)", "", profile, processed, onlyConstraints, constraintPrefix);

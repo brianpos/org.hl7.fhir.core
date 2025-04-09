@@ -246,7 +246,7 @@ public abstract class PrimitiveType<T> extends DataType implements IPrimitiveTyp
   }
 
   /*
-   * this is a work around for representation issues with Bigdecimal. So comments in DecimaType. 
+   * this is a workaround for representation issues with BigDecimal. So comments in DecimalType.
    * Yes, you can cut yourself with this method... 
    */
   protected void forceStringValue(String value) {
@@ -257,6 +257,11 @@ public abstract class PrimitiveType<T> extends DataType implements IPrimitiveTyp
   public boolean hasPrimitiveValue() {
     return StringUtils.isNotBlank(getValueAsString());
   }
+
+  public boolean canHavePrimitiveValue() {
+    return true;
+  }
+  
   
   public String fpValue() {
     return primitiveValue();

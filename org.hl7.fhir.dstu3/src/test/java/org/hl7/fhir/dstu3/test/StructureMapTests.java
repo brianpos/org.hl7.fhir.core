@@ -8,10 +8,11 @@ import org.hl7.fhir.dstu3.model.StructureMap;
 import org.hl7.fhir.dstu3.test.support.TestingUtilities;
 import org.hl7.fhir.dstu3.utils.StructureMapUtilities;
 import org.hl7.fhir.exceptions.FHIRException;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
 
 
+@Deprecated
 public class StructureMapTests {
 
   private void testParse(String path) throws FileNotFoundException, IOException, FHIRException {
@@ -19,8 +20,8 @@ public class StructureMapTests {
     	TestingUtilities.context = SimpleWorkerContext.fromPack(Utilities.path(TestingUtilities.home(), "publish", "definitions.xml.zip"));
     
     StructureMapUtilities scm = new StructureMapUtilities(TestingUtilities.context, null, null);
-    StructureMap map = scm.parse(TextFile.fileToString(Utilities.path(TestingUtilities.home(), path)));
-    TextFile.stringToFile(scm.render(map), Utilities.path(TestingUtilities.home(), path+".out"));
+    StructureMap map = scm.parse(FileUtilities.fileToString(Utilities.path(TestingUtilities.home(), path)));
+    FileUtilities.stringToFile(scm.render(map), Utilities.path(TestingUtilities.home(), path+".out"));
   }
   
 //  @Test
@@ -72,30 +73,30 @@ public class StructureMapTests {
 //
 //    StructureMapUtilities scu = new StructureMapUtilities(TestingUtilities.context, maps, null);
 //    
-//    for (String f : new File(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "logical")).list()) {
+//    for (String f : ManagedFileAccess.file(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "logical")).list()) {
 //      try {
-//        StructureDefinition sd = (StructureDefinition) new XmlParser().parse(new FileInputStream(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "logical", f)));
+//        StructureDefinition sd = (StructureDefinition) new XmlParser().parse(ManagedFileAccess.inStream(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "logical", f)));
 //        ((SimpleWorkerContext) TestingUtilities.context).seeResource(sd.getUrl(), sd);
 //      } catch (Exception e) {
 //        e.printStackTrace();
 //      }
 //    }
 //   
-//    for (String f : new File(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "map")).list()) {
+//    for (String f : ManagedFileAccess.file(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "map")).list()) {
 //      try {
-//        StructureMap map = scu.parse(TextFile.fileToString(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "map", f)));
+//        StructureMap map = scu.parse(FileUtilities.fileToString(Utilities.path(TestingUtilities.home(), "guides", "ccda2", "mapping", "map", f)));
 //        maps.put(map.getUrl(), map);
 //      } catch (Exception e) {
 //        e.printStackTrace();
 //      }
 //    }
 //        
-//    Element cda = Manager.parse(TestingUtilities.context, new FileInputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\example\\ccd.xml"), FhirFormat.XML);
-//    Manager.compose(TestingUtilities.context, cda, new FileOutputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\example\\ccd.out.json"), FhirFormat.JSON, OutputStyle.PRETTY, null);
-//    Manager.compose(TestingUtilities.context, cda, new FileOutputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\example\\ccd.out.xml"), FhirFormat.XML, OutputStyle.PRETTY, null);
+//    Element cda = Manager.parse(TestingUtilities.context, ManagedFileAccess.inStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\example\\ccd.xml"), FhirFormat.XML);
+//    Manager.compose(TestingUtilities.context, cda, ManagedFileAccess.outStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\example\\ccd.out.json"), FhirFormat.JSON, OutputStyle.PRETTY, null);
+//    Manager.compose(TestingUtilities.context, cda, ManagedFileAccess.outStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\example\\ccd.out.xml"), FhirFormat.XML, OutputStyle.PRETTY, null);
 //    Bundle bundle = new Bundle();
 //    scu.transform(null, cda, maps.get("http://hl7.org/fhir/StructureMap/cda"), bundle);
-//    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(Utilities.path("[tmp]", "bundle.xml"), bundle);
+//    new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(Utilities.path("[tmp]", "bundle.xml"), bundle);
 //  }
 //
 //  @Test
@@ -107,17 +108,17 @@ public class StructureMapTests {
 //
 //    StructureMapUtilities scu = new StructureMapUtilities(TestingUtilities.context, maps, null);
 //    
-//    for (String f : new File("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA").list()) {
+//    for (String f : ManagedFileAccess.file("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA").list()) {
 //      try {
-//        StructureDefinition sd = (StructureDefinition) new XmlParser().parse(new FileInputStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA\\"+f));
+//        StructureDefinition sd = (StructureDefinition) new XmlParser().parse(ManagedFileAccess.inStream("C:\\work\\org.hl7.fhir\\build\\guides\\ccda\\CDA\\"+f));
 //        ((SimpleWorkerContext) TestingUtilities.context).seeResource(sd.getUrl(), sd);
 //      } catch (Exception e) {
 //      }
 //    }
 //
-//    for (String f : new File("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\map").list()) {
+//    for (String f : ManagedFileAccess.file("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\map").list()) {
 //      try {
-//        StructureMap map = scu.parse(TextFile.fileToString("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\map\\"+ f));
+//        StructureMap map = scu.parse(FileUtilities.fileToString("C:\\work\\org.hl7.fhir\\build\\guides\\ccda2\\mapping\\map\\"+ f));
 //        maps.put(map.getUrl(), map);
 //      } catch (Exception e) {
 //      }
@@ -125,7 +126,7 @@ public class StructureMapTests {
 //        
 //    List<StructureDefinition> result = scu.analyse(null, maps.get("http://hl7.org/fhir/StructureMap/cda")).getProfiles();
 //    for (StructureDefinition sd : result)
-//      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(Utilities.path("[tmp]", "res-"+sd.getId()+".xml"), sd);
+//      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(Utilities.path("[tmp]", "res-"+sd.getId()+".xml"), sd);
 //  }
 //
 }

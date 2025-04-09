@@ -32,6 +32,7 @@ package org.hl7.fhir.dstu2016may.utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,9 +44,11 @@ import org.hl7.fhir.dstu2016may.metamodel.Manager;
 import org.hl7.fhir.dstu2016may.metamodel.Manager.FhirFormat;
 import org.hl7.fhir.dstu2016may.model.Bundle;
 import org.hl7.fhir.dstu2016may.model.StructureMap;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 
+@Deprecated
 public class Transformer {
 
   private String txServer;
@@ -117,7 +120,7 @@ public class Transformer {
         loadMaps(folder);
       }
       System.out.println("  .. load source from " + source);
-      Element e = Manager.parse(context, new FileInputStream(source), FhirFormat.XML);
+      Element e = Manager.parse(context, ManagedFileAccess.inStream(source), FhirFormat.XML);
 
       Bundle bundle = new Bundle();
       StructureMap map = scu.getLibrary().get(mapUri);
@@ -125,7 +128,7 @@ public class Transformer {
         throw new Error("Unable to find map " + mapUri + " (Known Maps = "
             + Utilities.listCanonicalUrls(scu.getLibrary().keySet()) + ")");
       scu.transform(null, e, map, bundle);
-      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(output), bundle);
+      new XmlParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(output), bundle);
       return true;
     } catch (Exception e) {
       e.printStackTrace();
@@ -134,10 +137,10 @@ public class Transformer {
     }
   }
 
-  private void loadMaps(String folder) {
-    for (String f : new File(folder).list()) {
+  private void loadMaps(String folder) throws IOException {
+    for (String f : ManagedFileAccess.file(folder).list()) {
       try {
-        StructureMap map = scu.parse(TextFile.fileToString(Utilities.path(folder, f)));
+        StructureMap map = scu.parse(FileUtilities.fileToString(Utilities.path(folder, f)));
         scu.getLibrary().put(map.getUrl(), map);
       } catch (Exception e) {
       }

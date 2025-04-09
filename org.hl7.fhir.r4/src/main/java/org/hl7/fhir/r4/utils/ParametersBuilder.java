@@ -13,7 +13,8 @@ import org.hl7.fhir.r4.formats.JsonParser;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.MetadataResource;
 import org.hl7.fhir.r4.model.Parameters;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 
 /**
  * Used to take an overload dump from tx.fhir.org and turn it into a parameters resource
@@ -21,6 +22,7 @@ import org.hl7.fhir.utilities.TextFile;
  * @author grahamegrieve
  *
  */
+@Deprecated
 public class ParametersBuilder {
 
   public static void main(String[] args) throws FileNotFoundException, IOException {
@@ -41,10 +43,10 @@ public class ParametersBuilder {
   private void process(String output) throws FileNotFoundException, IOException {
     Parameters p = new Parameters();
     Set<String> ids = new HashSet<>();
-    for (File f : new File(folder).listFiles()) {
+    for (File f : ManagedFileAccess.file(folder).listFiles()) {
       if (f.getName().startsWith(baseId)) {
         if (f.getName().startsWith(baseId)) {
-          byte[] cnt = TextFile.fileToBytes(f);
+          byte[] cnt = FileUtilities.fileToBytes(f);
           cnt = shaveZeros(cnt); // bug in tx.fhir.org
           MetadataResource r = (MetadataResource) new JsonParser().parse(cnt);
           if (!ids.contains(r.getUrl()+"|"+r.getVersion())) {
@@ -54,7 +56,7 @@ public class ParametersBuilder {
         }
       }
     }
-    new JsonParser().setOutputStyle(OutputStyle.PRETTY).compose(new FileOutputStream(output), p);
+    new JsonParser().setOutputStyle(OutputStyle.PRETTY).compose(ManagedFileAccess.outStream(output), p);
   }
 
   private byte[] shaveZeros(byte[] cnt) {

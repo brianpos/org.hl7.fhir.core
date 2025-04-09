@@ -49,6 +49,7 @@ import org.hl7.fhir.dstu2016may.model.Enumerations.ConformanceResourceStatus;
 import org.hl7.fhir.dstu2016may.model.Identifier;
 import org.hl7.fhir.dstu2016may.model.ValueSet;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -60,6 +61,7 @@ import org.w3c.dom.Element;
  *
  */
 
+@Deprecated
 public class ICPC2Importer {
 
   public static void main(String[] args) {
@@ -115,10 +117,10 @@ public class ICPC2Importer {
   }
 
   public void go() throws Exception {
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    DocumentBuilderFactory factory = XMLUtil.newXXEProtectedDocumentBuilderFactory();
     factory.setNamespaceAware(false);
     DocumentBuilder builder = factory.newDocumentBuilder();
-    Document doc = builder.parse(new FileInputStream(sourceFileName));
+    Document doc = builder.parse(ManagedFileAccess.inStream(sourceFileName));
 
     ValueSet vs = new ValueSet();
     vs.setUrl("http://hl7.org/fhir/sid/icpc2/vs");
@@ -167,8 +169,8 @@ public class ICPC2Importer {
 
     XmlParser xml = new XmlParser();
     xml.setOutputStyle(OutputStyle.PRETTY);
-    xml.compose(new FileOutputStream(targetFileNameVS), vs);
-    xml.compose(new FileOutputStream(targetFileNameCS), cs);
+    xml.compose(ManagedFileAccess.outStream(targetFileNameVS), vs);
+    xml.compose(ManagedFileAccess.outStream(targetFileNameCS), cs);
   }
 
   private void processClass(Element cls, Map<String, ConceptDefinitionComponent> concepts, CodeSystem define) {

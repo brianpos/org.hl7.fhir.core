@@ -9,7 +9,9 @@ import java.util.Set;
 
 import org.hl7.fhir.r5.model.ValueSet;
 import org.hl7.fhir.r5.model.ValueSet.ValueSetExpansionContainsComponent;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 
+@MarkedToMoveToAdjunctPackage
 class WorkingContext {
   private List<ValueSetExpansionContainsComponent> codes = new ArrayList<ValueSet.ValueSetExpansionContainsComponent>();
   private List<ValueSetExpansionContainsComponent> roots = new ArrayList<ValueSet.ValueSetExpansionContainsComponent>();
@@ -18,10 +20,11 @@ class WorkingContext {
   private Set<String> excludeKeys = new HashSet<String>();
   private Set<String> excludeSystems = new HashSet<String>();
   
-  private boolean canBeHeirarchy = true;
+  private boolean canBeHierarchy = true;
   private Integer offsetParam;
   private Integer countParam; // allowed count. Because of internal processing, we allow more 
-  private int total; // running count. This might be more than actually seen if we call out to an external server and only get the first 1000 codes
+  
+  private int extraCount; // running count. This might be more than actually seen if we call out to an external server and only get the first 1000 codes
   private boolean noTotal; // we lost count of the correct total
   
   public List<ValueSetExpansionContainsComponent> getCodes() {
@@ -48,12 +51,12 @@ class WorkingContext {
     return excludeSystems;
   }
 
-  public boolean isCanBeHeirarchy() {
-    return canBeHeirarchy;
+  public boolean isCanBeHierarchy() {
+    return canBeHierarchy;
   }
 
-  public void setCanBeHeirarchy(boolean canBeHeirarchy) {
-    this.canBeHeirarchy = canBeHeirarchy;
+  public void setCanBeHierarchy(boolean canBeHierarchy) {
+    this.canBeHierarchy = canBeHierarchy;
   }
   
   public boolean hasOffsetParam() {
@@ -80,18 +83,22 @@ class WorkingContext {
     this.countParam = countParam;
   }
   
-  public int getTotal() {
-    return total;
+  public int getExtraCount() {
+    return extraCount;
   }
 
-  public void incTotal() {
-    total++;
+  public void incExtraCount() {
+    extraCount++;
   }
 
-  public void incTotal(int amount) {
-    total += amount;
+  public void incExtraCount(int amount) {
+    extraCount += amount;
   }
 
+  public void resetExtraCount() {
+    extraCount = 0;
+  }
+  
   public boolean isNoTotal() {
     return noTotal;
   }
@@ -99,5 +106,13 @@ class WorkingContext {
   public void setNoTotal(boolean noTotal) {
     this.noTotal = noTotal;
   }
-  
+
+  public int getCount() {
+    return codes.size();
+  }
+
+  public int getStatedTotal() {
+    return codes.size() + extraCount;
+  }
+
 }

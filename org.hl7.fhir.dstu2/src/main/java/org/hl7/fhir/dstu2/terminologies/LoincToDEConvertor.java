@@ -54,6 +54,7 @@ import org.hl7.fhir.dstu2.model.Meta;
 import org.hl7.fhir.dstu2.utils.ToolingExtensions;
 import org.hl7.fhir.exceptions.FHIRFormatError;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -67,6 +68,7 @@ import org.xmlpull.v1.XmlPullParserException;
  * @author Grahame
  *
  */
+@Deprecated
 public class LoincToDEConvertor {
 
   public static void main(String[] args)
@@ -161,16 +163,16 @@ public class LoincToDEConvertor {
   }
 
   private void loadLoinc() throws FileNotFoundException, SAXException, IOException, ParserConfigurationException {
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    DocumentBuilderFactory factory = XMLUtil.newXXEProtectedDocumentBuilderFactory();
     factory.setNamespaceAware(true);
     DocumentBuilder builder = factory.newDocumentBuilder();
 
-    xml = builder.parse(new FileInputStream(definitions));
+    xml = builder.parse(ManagedFileAccess.inStream(definitions));
   }
 
   private void saveBundle() throws FHIRFormatError, IOException, XmlPullParserException {
     XmlParser xml = new XmlParser();
-    FileOutputStream s = new FileOutputStream(dest);
+    FileOutputStream s = ManagedFileAccess.outStream(dest);
     xml.compose(s, bundle, true);
     s.close();
   }

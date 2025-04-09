@@ -10,8 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.hl7.fhir.utilities.TextFile;
-import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.FileUtilities;
+import org.hl7.fhir.utilities.VersionUtilities;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
 import org.hl7.fhir.utilities.json.model.JsonArray;
 import org.hl7.fhir.utilities.json.model.JsonObject;
 import org.hl7.fhir.utilities.json.parser.JsonParser;
@@ -27,18 +28,123 @@ import org.hl7.fhir.utilities.json.parser.JsonParser;
 public class PackageHacker {
 
   private static boolean useSecureReferences = false;
-  
+
   public static void main(String[] args) throws FileNotFoundException, IOException {
-    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/us/vitals/2020Sep/package.tgz");
+//    new PackageHacker().massEdit(ManagedFileAccess.file("/Users/grahamegrieve/web/hl7.org/fhir"));
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot1/hl7.fhir.r6.core.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot1/hl7.fhir.r6.corexml.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot1/hl7.fhir.r6.examples.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot1/hl7.fhir.r6.expansions.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot1/hl7.fhir.r6.search.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot2/hl7.fhir.r6.core.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot2/hl7.fhir.r6.corexml.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot2/hl7.fhir.r6.examples.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot2/hl7.fhir.r6.expansions.tgz");
+//    new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/6.0.0-ballot2/hl7.fhir.r6.search.tgz");
+    
+//      new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/us/core/v311/package.tgz", "http://hl7.org/fhir/us/core/STU3.1.1");
+     // new PackageHacker().edit("/Users/grahamegrieve/web/hl7.org/fhir/us/core/v700/package.tgz", "http://hl7.org/fhir/us/core/STU7");
+    
+    PackageHacker self = new PackageHacker();
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/1.0.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/1.0.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/2.0.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/2.0.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/2.1.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/2.1.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/3.0.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/3.0.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/3.1.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/3.1.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/4.0.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/4.0.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/5.0.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/5.0.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/5.1.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/5.1.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/5.2.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/5.2.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/5.3.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/5.3.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/5.4.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/5.4.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/5.5.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/5.5.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/6.0.0/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/6.0.0/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/6.0.1/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/6.0.1/hl7.terminology.r4b.tgz");
+//    self.cloneToR4B("/Users/grahamegrieve/web/terminology.hl7.org/6.0.2/hl7.terminology.r4.tgz", "/Users/grahamegrieve/web/terminology.hl7.org/6.0.2/hl7.terminology.r4b.tgz");  
+   // self.packFolder("/Users/grahamegrieve/web/hl7.org/fhir/us/core/v610/package");
+    self.edit("/Users/grahamegrieve/web/www.hl7.org.fhir/us/womens-health-registries/0.2.0-withdrawal/package.tgz");
   }
 
+  private void packFolder(String src) throws FileNotFoundException, IOException {
+    NpmPackage npm = NpmPackage.fromFolder(src);
+    npm.save(new FileOutputStream(src+".tgz"));
+    
+  }
+
+  private void cloneToR4B(String src, String dst) throws IOException {
+    FileInputStream fs = ManagedFileAccess.inStream(src);
+    NpmPackage pck = NpmPackage.fromPackage(fs);
+    System.out.println(nice(pck.getNpm()));
+    JsonObject json = pck.getNpm();
+    String name = json.asString("name");
+    json.remove("name");
+    json.add("name", name.replace(".r4", ".r4b"));
+    json.remove("fhirVersions");
+    json.remove("dependencies");
+    JsonArray fv = new JsonArray();
+    json.add("fhirVersions", fv);
+    fv.add("4.3.0");
+    JsonObject dep = new JsonObject();
+    json.add("dependencies", dep);
+    dep.add(VersionUtilities.packageForVersion("4.3.0"), "4.3.0");
+    pck.save(new FileOutputStream(dst));
+  }
+
+//  private void massEdit(File dir) throws IOException {
+//    System.out.println("process "+dir.getAbsolutePath());
+//    for (File f : dir.listFiles()) {
+//      if (f.isDirectory()) {
+//        massEdit(f);
+//      } else if (f.getName().equals("package.tgz")) {
+//        try {
+//          FileInputStream fs = ManagedFileAccess.inStream(f);
+//          NpmPackage pck = NpmPackage.fromPackage(fs);
+//          if ("fhir.core".equals(pck.getNpm().str("type"))) {
+//            System.out.println("!!change "+f.getAbsolutePath());
+//            pck.getNpm().remove("type");
+//            pck.getNpm().set("type", "Core");
+//            FileOutputStream fso = ManagedFileAccess.outStream(f);
+//            try {
+//              pck.save(fso);
+//            } finally {
+//              fso.close();
+//            }
+//          }
+//        } catch (Exception e) {
+//          System.out.println("!!Error: "+e.getMessage());
+//        }
+//      } else if (f.getName().startsWith("hl7.fhir.r") && f.getName().endsWith(".examples.tgz")) {
+//        try {
+//          FileInputStream fs = ManagedFileAccess.inStream(f);
+//          NpmPackage pck = NpmPackage.fromPackage(fs);
+//          if ("fhir.examples".equals(pck.getNpm().str("type"))) {
+//            System.out.println("!!change "+f.getAbsolutePath());
+//            pck.getNpm().remove("type");
+//            pck.getNpm().set("type", "Examples");
+//            FileOutputStream fso = ManagedFileAccess.outStream(f);
+//            try {
+//              pck.save(fso);
+//            } finally {
+//              fso.close();
+//            }
+//          }
+//        } catch (Exception e) {
+//          System.out.println("!!Error: "+e.getMessage());
+//        }
+//
+//      }
+//    }
+//  }
+
   private void edit(String name) throws FileNotFoundException, IOException {
-    File f = new File(name);
+    File f = ManagedFileAccess.file(name);
     if (!f.exists())
       throw new Error("Unable to find "+f.getAbsolutePath());
-    
+
+    System.out.println("Loading Package "+f.getAbsolutePath());
     NpmPackage pck = null;
-    FileInputStream fs = new FileInputStream(f);
+    FileInputStream fs = ManagedFileAccess.inStream(f);
     try {
       pck = NpmPackage.fromPackage(fs);
     } finally {
@@ -46,34 +152,35 @@ public class PackageHacker {
     }
     System.out.println("Altering Package "+f.getAbsolutePath());
     System.out.println(nice(pck.getNpm()));
-    
-    change(pck.getNpm());
 
-    System.out.println("Revised Package");
-    System.out.println("=======================");
-    System.out.println(nice(pck.getNpm()));
-    System.out.println("=======================");
-    System.out.print("save? y/n: ");
-    int r = System.in.read();
-    if (r == 'y') {
-      f.renameTo(new File(Utilities.changeFileExt(name, ".tgz.bak")));
-      FileOutputStream fso = new FileOutputStream(f);
-      try {
-        pck.save(fso);
-      } finally {
-        fso.close();
-      }
-    }   
+    if (change(pck.getNpm())) {
+
+      System.out.println("Revised Package");
+      System.out.println("=======================");
+      System.out.println(nice(pck.getNpm()));
+      System.out.println("=======================");
+      System.out.print("save? y/n: ");
+      int r = System.in.read();
+      if (r == 'y') {
+        f.renameTo(ManagedFileAccess.file(FileUtilities.changeFileExt(name, ".tgz.bak")));
+        FileOutputStream fso = ManagedFileAccess.outStream(f);
+        try {
+          pck.save(fso);
+        } finally {
+          fso.close();
+        }
+      } 
+    }
   }
 
   private void fixExampleContent(Map<String, byte[]> content) {
-//    byte[] cnt = content.get("ServiceRequest-SDOHCC-ServiceRequestCompletedFoodPantryApplicationAssistExample.json");
-//    content.put("ServiceRequest-SDOHCC-ServiceRequestCompletedFoodPantryApplicationAssist.json", cnt);
-//    content.remove("ServiceRequest-SDOHCC-ServiceRequestCompletedFoodPantryApplicationAssistExample.json");
+    //    byte[] cnt = content.get("ServiceRequest-SDOHCC-ServiceRequestCompletedFoodPantryApplicationAssistExample.json");
+    //    content.put("ServiceRequest-SDOHCC-ServiceRequestCompletedFoodPantryApplicationAssist.json", cnt);
+    //    content.remove("ServiceRequest-SDOHCC-ServiceRequestCompletedFoodPantryApplicationAssistExample.json");
   }
 
   private void fixContent(Map<String, byte[]> content) {
-//    fixVersionInContent(content);
+    //    fixVersionInContent(content);
 
   }
 
@@ -81,10 +188,15 @@ public class PackageHacker {
     return JsonParser.compose(json, true);
   }
 
-  private void change(JsonObject npm) throws FileNotFoundException, IOException {
-//    fixVersions(npm, ver);
-    npm.remove("notForPublication");
-    npm.set("name", "hl7.fhir.us.vitals");
+  private boolean change(JsonObject npm) throws FileNotFoundException, IOException {
+    npm.remove("version");
+    npm.add("version", "0.2.0-withdrawal");
+    return true;
+//    if (npm.has("notForPublication")) {
+//      npm.remove("notForPublication");
+//      return true;
+//    }
+//    return false;
   }
 
   private void fixVersionInContent(Map<String, byte[]> content) {
@@ -97,7 +209,7 @@ public class PackageHacker {
         }
       }
     }
-    
+
   }
 
   private void fixVersions(JsonObject npm) {
@@ -125,12 +237,12 @@ public class PackageHacker {
   }
 
   private void addContentFrom(String folder, Map<String, byte[]> content) throws FileNotFoundException, IOException {
-    for (File f : new File(folder).listFiles()) {
+    for (File f : ManagedFileAccess.file(folder).listFiles()) {
       if (f.getName().endsWith(".json") && !f.getName().endsWith(".canonical.json")) {
-         String cnt = TextFile.fileToString(f);
-         if (cnt.contains("\"resourceType\"")) {
-           content.put("package/"+f.getName(), TextFile.fileToBytes(f));
-         }
+        String cnt = FileUtilities.fileToString(f);
+        if (cnt.contains("\"resourceType\"")) {
+          content.put("package/"+f.getName(), FileUtilities.fileToBytes(f));
+        }
       }
     }
   }

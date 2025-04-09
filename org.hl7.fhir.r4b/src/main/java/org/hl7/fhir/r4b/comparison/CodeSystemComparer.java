@@ -15,7 +15,9 @@ import org.hl7.fhir.r4b.model.CodeSystem.ConceptDefinitionComponent;
 import org.hl7.fhir.r4b.model.CodeSystem.ConceptDefinitionDesignationComponent;
 import org.hl7.fhir.r4b.model.CodeSystem.ConceptPropertyComponent;
 import org.hl7.fhir.r4b.model.CodeSystem.PropertyComponent;
+import org.hl7.fhir.utilities.MarkedToMoveToAdjunctPackage;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.i18n.RenderingI18nContext;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueSeverity;
 import org.hl7.fhir.utilities.validation.ValidationMessage.IssueType;
@@ -26,6 +28,7 @@ import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator.Row;
 import org.hl7.fhir.utilities.xhtml.HierarchicalTableGenerator.TableModel;
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
 
+@MarkedToMoveToAdjunctPackage
 public class CodeSystemComparer extends CanonicalResourceComparer {
 
   public class CodeSystemComparison extends CanonicalResourceComparison<CodeSystem> {
@@ -348,7 +351,7 @@ public class CodeSystemComparer extends CanonicalResourceComparer {
   public XhtmlNode renderConcepts(CodeSystemComparison comparison, String id, String prefix)
       throws FHIRException, IOException {
     // columns: code, display (left|right), properties (left|right)
-    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(Utilities.path("[tmp]", "compare"), false);
+    HierarchicalTableGenerator gen = new HierarchicalTableGenerator(new RenderingI18nContext(), Utilities.path("[tmp]", "compare"), false);
     TableModel model = gen.new TableModel(id, true);
     model.setAlternating(true);
     model.getTitles().add(gen.new Title(null, null, "Code", "The code for the concept", null, 100));

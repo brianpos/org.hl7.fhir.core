@@ -1,6 +1,7 @@
 package org.hl7.fhir.utilities.i18n;
 
 import java.text.MessageFormat;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -20,8 +21,8 @@ public abstract class I18nBase {
 
   public static final String PLURAL_SUFFIX = "PLURAL";
   public static final String KEY_DELIMITER = "_";
-  private Locale locale;
-  private ResourceBundle i18nMessages;
+  protected Locale locale;
+  private ResourceBundle messages;
   private PluralRules pluralRules;
   private boolean warnAboutMissingMessages = true;
 
@@ -29,7 +30,7 @@ public abstract class I18nBase {
     if (Objects.nonNull(locale)) {
       return locale;
     } else {
-      return Locale.US;
+      return Locale.getDefault();
     }
   }
 
@@ -42,7 +43,7 @@ public abstract class I18nBase {
    * Verifies if a {@link ResourceBundle} has been loaded for the current {@link Locale}. If not, it triggers a load.
    */
   private void checkResourceBundleIsLoaded() {
-    if (i18nMessages == null) {
+    if (messages == null) {
       setValidationMessageLanguage(getLocale());
     }
   }
@@ -65,7 +66,7 @@ public abstract class I18nBase {
     if (!messageKeyExistsForLocale(message)) {
       if (!message.contains(" ")) {
         if (warnAboutMissingMessages && (hasArgs || !message.contains(" "))) {
-          System.out.println("Attempting to localize message " + message + ", but no such equivalent message exists for" +
+          System.out.println("Attempting to localize "+typeOfString()+" " + message + ", but no such equivalent message exists for" +
               " the locale " + getLocale());
         }
       }
@@ -73,8 +74,12 @@ public abstract class I18nBase {
     return messageKeyExistsForLocale(message);
   }
 
+  protected String typeOfString() {
+    return "message";
+  }
+
   protected boolean messageKeyExistsForLocale(String message) {
-    return i18nMessages.containsKey(message);
+    return messages.containsKey(message);
   }
 
 
@@ -98,6 +103,11 @@ public abstract class I18nBase {
       .map(entry -> baseKey + KEY_DELIMITER + entry).collect(Collectors.toSet());
   }
 
+
+  protected Set<String> getPluralSuffixes() {
+    return Collections.unmodifiableSet(pluralRules.getKeywords());
+  }
+  
   protected String getRootKeyFromPlural(@Nonnull String pluralKey) {
     checkPluralRulesAreLoaded();
     for (String keyword : pluralRules
@@ -113,9 +123,9 @@ public abstract class I18nBase {
     String message = theMessage;
     if (messageExistsForLocale(theMessage, (theMessageArguments != null && theMessageArguments.length > 0))) {
       if (Objects.nonNull(theMessageArguments) && theMessageArguments.length > 0) {
-        message = MessageFormat.format(i18nMessages.getString(theMessage).trim(), theMessageArguments);
+        message = MessageFormat.format(messages.getString(theMessage).trim(), theMessageArguments);
       } else {
-        message = i18nMessages.getString(theMessage).trim();
+        message = MessageFormat.format(messages.getString(theMessage).trim(), (Object) null);
       }
     }
     return message;
@@ -152,7 +162,11 @@ public abstract class I18nBase {
    * @param locale {@link Locale} to load resources for.
    */
   public void setValidationMessageLanguage(Locale locale) {
-    i18nMessages = ResourceBundle.getBundle("Messages", locale);
+    messages = ResourceBundle.getBundle(getMessagesSourceFileName(), locale);
+  }
+
+  protected String getMessagesSourceFileName() {
+    return "Messages";
   }
 
   public void setPluralRules(Locale locale) {

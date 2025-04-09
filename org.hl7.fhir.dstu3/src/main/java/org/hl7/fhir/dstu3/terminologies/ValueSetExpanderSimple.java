@@ -101,13 +101,14 @@ import org.hl7.fhir.utilities.Utilities;
  *
  */
 
+@Deprecated
 public class ValueSetExpanderSimple implements ValueSetExpander {
 
   private List<ValueSetExpansionContainsComponent> codes = new ArrayList<ValueSet.ValueSetExpansionContainsComponent>();
   private List<ValueSetExpansionContainsComponent> roots = new ArrayList<ValueSet.ValueSetExpansionContainsComponent>();
   private Map<String, ValueSetExpansionContainsComponent> map = new HashMap<String, ValueSet.ValueSetExpansionContainsComponent>();
   private IWorkerContext context;
-  private boolean canBeHeirarchy = true;
+  private boolean canBeHierarchy = true;
   private Set<String> excludeKeys = new HashSet<String>();
   private Set<String> excludeSystems = new HashSet<String>();
   private ValueSetExpanderFactory factory;
@@ -151,13 +152,13 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
 
     String s = key(n);
     if (map.containsKey(s) || excludeKeys.contains(s)) {
-      canBeHeirarchy = false;
+      canBeHierarchy = false;
     } else {
       codes.add(n);
       map.put(s, n);
       total++;
     }
-    if (canBeHeirarchy && parent != null) {
+    if (canBeHierarchy && parent != null) {
       parent.getContains().add(n);
     } else {
       roots.add(n);
@@ -198,7 +199,7 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
       ValueSetExpansionContainsComponent np = null;
       boolean abs = CodeSystemUtilities.isNotSelectable(cs, def);
       boolean inc = CodeSystemUtilities.isInactive(cs, def);
-      if (canBeHeirarchy || !abs)
+      if (canBeHierarchy || !abs)
         np = addCode(system, def.getCode(), def.getDisplay(), parent, def.getDesignation(), profile, abs, inc, filters);
       for (ConceptDefinitionComponent c : def.getConcept())
         addCodeAndDescendents(cs, system, c, np, profile, filters);
@@ -280,7 +281,7 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
       if (source.hasCompose())
         handleCompose(source.getCompose(), focus.getExpansion().getParameter(), profile);
 
-      if (canBeHeirarchy) {
+      if (canBeHierarchy) {
         for (ValueSetExpansionContainsComponent c : roots) {
           focus.getExpansion().getContains().add(c);
         }
@@ -288,7 +289,7 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
         for (ValueSetExpansionContainsComponent c : codes) {
           if (map.containsKey(key(c)) && !c.getAbstract()) { // we may have added abstract codes earlier while we still thought it might be heirarchical, but later we gave up, so now ignore them
             focus.getExpansion().getContains().add(c);
-            c.getContains().clear(); // make sure any heirarchy is wiped
+            c.getContains().clear(); // make sure any hierarchy is wiped
           }
         }
       }
@@ -321,12 +322,6 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
     return res;
   }
 
-  private void addToHeirarchy(List<ValueSetExpansionContainsComponent> target, List<ValueSetExpansionContainsComponent> source) {
-    for (ValueSetExpansionContainsComponent s : source) {
-      target.add(s);
-    }
-  }
-
   private String getCodeDisplay(CodeSystem cs, String code) throws TerminologyServiceException {
     ConceptDefinitionComponent def = getConceptForCode(cs.getConcept(), code);
     if (def == null)
@@ -350,13 +345,13 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
     // Exclude comes first because we build up a map of things to exclude
     for (ConceptSetComponent inc : compose.getExclude())
       excludeCodes(inc, params);
-    canBeHeirarchy = !profile.getExcludeNested() && excludeKeys.isEmpty() && excludeSystems.isEmpty();
+    canBeHierarchy = !profile.getExcludeNested() && excludeKeys.isEmpty() && excludeSystems.isEmpty();
     boolean first = true;
     for (ConceptSetComponent inc : compose.getInclude()) {
       if (first == true)
         first = false;
       else
-        canBeHeirarchy = false;
+        canBeHierarchy = false;
       includeCodes(inc, params, profile);
     }
 
@@ -381,7 +376,7 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
       if (!existsInParams(params, p.getName(), p.getValue()))
         params.add(p);
     }
-    canBeHeirarchy = false; // if we're importing a value set, we have to be combining, so we won't try for a heirarchy
+    canBeHierarchy = false; // if we're importing a value set, we have to be combining, so we won't try for a hierarchy
     return vso.getValueset();
   }
 
@@ -406,7 +401,7 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
     } else {
       CodeSystem cs = context.fetchCodeSystem(inc.getSystem());
       if ((cs == null || cs.getContent() != CodeSystemContentMode.COMPLETE) && context.supportsSystem(inc.getSystem())) {
-        addCodes(context.expandVS(inc, canBeHeirarchy), params, profile, imports);
+        addCodes(context.expandVS(inc, canBeHierarchy), params, profile, imports);
         return;
       }
 
@@ -430,14 +425,14 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
       }
 
       if (!inc.getConcept().isEmpty()) {
-        canBeHeirarchy = false;
+        canBeHierarchy = false;
         for (ConceptReferenceComponent c : inc.getConcept()) {
           addCode(inc.getSystem(), c.getCode(), Utilities.noString(c.getDisplay()) ? getCodeDisplay(cs, c.getCode()) : c.getDisplay(), null, convertDesignations(c.getDesignation()), profile, false,
             CodeSystemUtilities.isInactive(cs, c.getCode()), imports);
         }
       }
       if (inc.getFilter().size() > 1) {
-        canBeHeirarchy = false; // which will bt the case if we get around to supporting this
+        canBeHierarchy = false; // which will bt the case if we get around to supporting this
         throw new TerminologyServiceException("Multiple filters not handled yet"); // need to and them, and this isn't done yet. But this shouldn't arise in non loinc and snomed value sets
       }
       if (inc.getFilter().size() == 1) {
@@ -457,7 +452,7 @@ public class ValueSetExpanderSimple implements ValueSetExpander {
             addCodeAndDescendents(cs, inc.getSystem(), c, null, profile, imports);
         } else if ("display".equals(fc.getProperty()) && fc.getOp() == FilterOperator.EQUAL) {
           // gg; note: wtf is this: if the filter is display=v, look up the code 'v', and see if it's diplsay is 'v'?
-          canBeHeirarchy = false;
+          canBeHierarchy = false;
           ConceptDefinitionComponent def = getConceptForCode(cs.getConcept(), fc.getValue());
           if (def != null) {
             if (isNotBlank(def.getDisplay()) && isNotBlank(fc.getValue())) {

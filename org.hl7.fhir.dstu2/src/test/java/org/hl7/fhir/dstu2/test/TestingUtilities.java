@@ -13,9 +13,11 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.codec.binary.Base64;
 import org.hl7.fhir.dstu2.utils.IWorkerContext;
-import org.hl7.fhir.utilities.CSFile;
-import org.hl7.fhir.utilities.TextFile;
+import org.hl7.fhir.utilities.FileUtilities;
 import org.hl7.fhir.utilities.Utilities;
+import org.hl7.fhir.utilities.filesystem.CSFile;
+import org.hl7.fhir.utilities.filesystem.ManagedFileAccess;
+import org.hl7.fhir.utilities.xml.XMLUtil;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -28,6 +30,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
 
+@Deprecated
 public class TestingUtilities {
   private static final boolean SHOW_DIFF = true;
 
@@ -41,7 +44,7 @@ public class TestingUtilities {
       command.add("\"" + diff + "\" \"" + f1 + "\" \"" + f2 + "\"");
 
       ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new CSFile(Utilities.path("[tmp]")));
+      builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
       builder.start();
 
     }
@@ -144,7 +147,7 @@ public class TestingUtilities {
   }
 
   private static Document loadXml(String fn) throws Exception {
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    DocumentBuilderFactory factory = XMLUtil.newXXEProtectedDocumentBuilderFactory();
     factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
     factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
     factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
@@ -154,7 +157,7 @@ public class TestingUtilities {
 
     factory.setNamespaceAware(true);
     DocumentBuilder builder = factory.newDocumentBuilder();
-    return builder.parse(new FileInputStream(fn));
+    return builder.parse(ManagedFileAccess.inStream(fn));
   }
 
   public static String checkJsonIsSame(String f1, String f2)
@@ -166,7 +169,7 @@ public class TestingUtilities {
       command.add("\"" + diff + "\" \"" + f1 + "\" \"" + f2 + "\"");
 
       ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new CSFile(Utilities.path("[tmp]")));
+      builder.directory(ManagedFileAccess.csfile(Utilities.path("[tmp]")));
       builder.start();
 
     }
@@ -175,8 +178,8 @@ public class TestingUtilities {
 
   private static String compareJson(String f1, String f2)
       throws JsonSyntaxException, FileNotFoundException, IOException {
-    JsonObject o1 = (JsonObject) new com.google.gson.JsonParser().parse(TextFile.fileToString(f1));
-    JsonObject o2 = (JsonObject) new com.google.gson.JsonParser().parse(TextFile.fileToString(f2));
+    JsonObject o1 = (JsonObject) new com.google.gson.JsonParser().parse(FileUtilities.fileToString(f1));
+    JsonObject o2 = (JsonObject) new com.google.gson.JsonParser().parse(FileUtilities.fileToString(f2));
     return compareObjects("", o1, o2);
   }
 
