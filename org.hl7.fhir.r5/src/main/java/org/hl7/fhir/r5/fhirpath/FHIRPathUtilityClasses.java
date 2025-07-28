@@ -101,6 +101,18 @@ public class FHIRPathUtilityClasses {
     }
 
     private String getNamespace() {
+      if (instance instanceof org.hl7.fhir.r5.elementmodel.Element) {
+        org.hl7.fhir.r5.elementmodel.Element element = (org.hl7.fhir.r5.elementmodel.Element) instance;
+        if (element.isResource()) {
+          return "FHIR";
+        }
+        if (element.getProperty() != null
+          && element.getProperty().getStructure() != null 
+          && element.getProperty().getStructure().getUrl() != null
+          && element.getProperty().getStructure().getUrl().startsWith("http://hl7.org/fhir/StructureDefinition/")){
+          return "FHIR";
+        }
+      }
       if ((instance instanceof Resource)) {
         return "FHIR";
       } else if (!(instance instanceof Element) || ((Element)instance).isDisallowExtensions()) {
@@ -111,6 +123,24 @@ public class FHIRPathUtilityClasses {
     }
 
     private String getName() {
+      if (instance instanceof org.hl7.fhir.r5.elementmodel.Element) {
+        org.hl7.fhir.r5.elementmodel.Element element = (org.hl7.fhir.r5.elementmodel.Element) instance;
+        if (element.isResource()) {
+          return Utilities.capitalize(instance.fhirType());
+        }
+        return instance.fhirType();
+        // if (element.getProperty() != null
+        //   && element.getProperty().getDefinition() != null) {
+        //   // check through all the types that are defined for this element
+        //   // and see which if them corresponds to the instance
+        //   for (TypeRefComponent type : element.getProperty().getDefinition().getType()) {
+        //     if (type.getCode() != null && type.getCode().equals(element.fhirType())) {
+        //       return type.getCode();
+        //     }
+        //   }
+        //   return instance.fhirType();
+        // }
+      }
       if ((instance instanceof Resource)) {
         return instance.fhirType();
       } else if (!(instance instanceof Element) || ((Element)instance).isDisallowExtensions()) {

@@ -5338,11 +5338,22 @@ private TimeType timeAdd(TimeType d, Quantity q, boolean negate, ExpressionNode 
       n = texp.getName();        
     }
     if (ns.equals("System")) {
-      if (focus.get(0) instanceof Resource) {
+      var focusValue = focus.get(0);
+      if (focusValue instanceof org.hl7.fhir.r5.elementmodel.Element) {
+        // Handle Element case
+        var element = (org.hl7.fhir.r5.elementmodel.Element) focusValue;
+        if (element.isResource()) {
+          // resources aren't system types
         return makeBoolean(false);
       }
-      if (!(focus.get(0) instanceof Element) || ((Element) focus.get(0)).isDisallowExtensions()) {
-        String t = Utilities.capitalize(focus.get(0).fhirType());
+        // the system types shouldn't come in here anyway?
+        return makeBoolean(false);
+      }
+      if (focusValue instanceof Resource) {
+        return makeBoolean(false);
+      }
+      if (!(focusValue instanceof Element) || ((Element) focusValue).isDisallowExtensions()) {
+        String t = Utilities.capitalize(focusValue.fhirType());
         if (n.equals(t)) {
           return makeBoolean(true);
         }
