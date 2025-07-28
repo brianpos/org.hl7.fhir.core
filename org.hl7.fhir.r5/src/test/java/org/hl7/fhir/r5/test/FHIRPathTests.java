@@ -301,6 +301,170 @@ public class FHIRPathTests {
     }
   }
 
+  @SuppressWarnings("deprecation")
+  @ParameterizedTest(name = "{index}: file {0}")
+  @MethodSource("data")
+  public void testElementModel(String name, Element test) throws FileNotFoundException, IOException, FHIRException, org.hl7.fhir.exceptions.FHIRException, UcumException {
+    // Setting timezone for this test. Grahame is in UTC+11, Travis is in GMT, and I'm here in Toronto, Canada with
+    // all my time based tests failing locally...
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC+1100"));
+
+    fp.setHostServices(new FHIRPathTestEvaluationServices(this.context));
+    String input = test.getAttribute("inputfile");
+    String expression = XMLUtil.getNamedChild(test, "expression").getTextContent();
+    TestResultType fail = TestResultType.OK;
+    if ("syntax".equals(XMLUtil.getNamedChild(test, "expression").getAttribute("invalid"))) {
+      fail = TestResultType.SYNTAX;
+    } else if ("semantic".equals(XMLUtil.getNamedChild(test, "expression").getAttribute("invalid"))) {
+      fail = TestResultType.SEMANTICS;      
+    } else if ("execution".equals(XMLUtil.getNamedChild(test, "expression").getAttribute("invalid"))) {
+      fail = TestResultType.EXECUTION;      
+    };
+    fp.setAllowPolymorphicNames("lenient/polymorphics".equals(test.getAttribute("mode")));
+    boolean skipStaticCheck = false;
+    if ("true".equals(test.getAttribute("skipStaticCheck")))
+      skipStaticCheck = true;
+    Base res = null;
+
+    List<Base> outcome = new ArrayList<Base>();
+
+    System.out.println(name);
+
+    ExpressionNode node = null;
+    try {
+      node = fp.parse(expression);
+      Assertions.assertTrue(fail != TestResultType.SYNTAX, String.format("Expected exception didn't occur parsing %s", expression));
+    } catch (Exception e) {
+      System.out.println("Parsing Error: "+e.getMessage());
+      Assertions.assertTrue(fail == TestResultType.SYNTAX, String.format("Unexpected exception parsing %s: " + e.getMessage(), expression));
+    }
+    
+    if (node != null) {
+      if (!Utilities.noString(input)) {
+        res = resources.get(input);
+        if (res == null) {
+          var instream = TestingUtilities.loadTestResourceStream("r5", input);
+          if ("cda".equals(test.getAttribute("mode"))) {
+            res = Manager.makeParser(fp.getWorker(), FhirFormat.XML).parseSingle(instream, null);
+          } else if (input.endsWith(".json")) {
+            // res = new JsonParser().parse(instream);
+            res = Manager.makeParser(fp.getWorker(), FhirFormat.JSON).parseSingle(instream, null);
+          } else {
+            // res = new XmlParser().parse(instream);
+            res = Manager.makeParser(fp.getWorker(), FhirFormat.XML).parseSingle(instream, null);
+          }
+          resources.put(input, res);
+        }        
+      }
+      
+      if (!skipStaticCheck) {
+        try {
+          if (Utilities.noString(input)) {
+            fp.check(null, null, null, node);
+          } else {
+            fp.check(res, res.fhirType(), res.fhirType(), res.fhirType(), node);
+          }
+          Assertions.assertTrue(fail != TestResultType.SEMANTICS, String.format("Expected exception didn't occur checking %s", expression));
+        } catch (Exception e) {
+          System.out.println("Checking Error: "+e.getMessage());
+          Assertions.assertTrue(fail == TestResultType.SEMANTICS, String.format("Unexpected exception checking %s: " + e.getMessage(), expression));
+          node = null;
+        }
+      }
+    }
+    
+    if (node != null) {
+      try {
+        if ("element".equals(test.getAttribute("mode"))) {
+          List<ValidatedFragment> e = Manager.parse(fp.getWorker(), TestingUtilities.loadTestResourceStream("r5", input), input.endsWith(".json") ? FhirFormat.JSON : FhirFormat.XML);                        
+          outcome = fp.evaluate(e.get(0).getElement(), node);
+        } else {
+          outcome = fp.evaluate(res, node);
+        }
+        Assertions.assertTrue(fail == TestResultType.OK, String.format("Expected exception didn't occur executing %s", expression));
+      } catch (Exception e) {
+        System.out.println("Execution Error: "+e.getMessage());
+        Assertions.assertTrue(fail == TestResultType.EXECUTION, String.format("Unexpected exception executing %s: " + e.getMessage(), expression));
+        node = null;
+      }
+    }
+
+    if (fp.hasLog()) {
+      System.out.println(name);
+      System.out.println(fp.takeLog());
+    }
+
+    if (node != null) {
+      if ("true".equals(test.getAttribute("predicate"))) {
+        boolean ok = fp.convertToBoolean(outcome);
+        outcome.clear();
+        outcome.add(new BooleanType(ok));
+      }
+
+      List<Element> expected = new ArrayList<Element>();
+      XMLUtil.getNamedChildren(test, "output", expected);
+      assertEquals(expected.size(), outcome.size(), String.format("Expected %d objects but found %d for expression %s", expected.size(), outcome.size(), expression));
+      if ("false".equals(test.getAttribute("ordered"))) {
+        for (int i = 0; i < Math.min(outcome.size(), expected.size()); i++) {
+          String tn = outcome.get(i).fhirType();
+          String s;
+          var qty = FHIRPathEngine.makeQuantity(outcome.get(i));
+          if (qty instanceof Quantity) {
+            s = fp.convertToString(qty);
+          } else {
+            s = outcome.get(i).primitiveValue();
+          }
+          boolean found = false;
+          for (Element e : expected) {
+            if ((Utilities.noString(e.getAttribute("type")) || e.getAttribute("type").equals(tn)) &&
+                (Utilities.noString(e.getTextContent()) || e.getTextContent().equals(s))) {
+              found = true;
+            }
+          }
+          Assertions.assertTrue(found, String.format("Outcome %d: Value %s of type %s not expected for %s", i, s, tn, expression));
+        }
+      } else {
+        for (int i = 0; i < Math.min(outcome.size(), expected.size()); i++) {
+          String tn = expected.get(i).getAttribute("type");
+          if (!Utilities.noString(tn)) {
+            assertEquals(tn, outcome.get(i).fhirType(), String.format("Outcome %d: Type should be %s but was %s", i, tn, outcome.get(i).fhirType()));
+          }
+          String v = expected.get(i).getTextContent();
+          if (!Utilities.noString(v)) {
+            if (outcome.get(i) instanceof Quantity) {
+              Quantity q = fp.parseQuantityString(v);
+              Assertions.assertTrue(outcome.get(i).equalsDeep(q), String.format("Outcome %d: Value should be %s but was %s", i, v, outcome.get(i).toString()));
+            } else {
+              Assertions.assertTrue(outcome.get(i).isPrimitive(), String.format("Outcome %d: Value should be a primitive type but was %s", i, outcome.get(i).fhirType()));
+              if (!(v.equals(primitiveValue(outcome.get(i))))) {
+                System.out.println(name);
+                System.out.println(String.format("Outcome %d: Value should be %s but was %s for expression %s", i, v, primitiveValue(outcome.get(i)), expression));
+              }
+              assertEquals(v, primitiveValue(outcome.get(i)), String.format("Outcome %d: Value should be %s but was %s for expression %s", i, v, primitiveValue(outcome.get(i)), expression));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private String primitiveValue(Base base) {
+    if (base instanceof org.hl7.fhir.r5.elementmodel.Element) {
+      org.hl7.fhir.r5.elementmodel.Element element = (org.hl7.fhir.r5.elementmodel.Element) base;
+      if (element.isPrimitive()) {
+        if (element.fhirType().equals("dateTime") || element.fhirType().equals("instant") || element.fhirType().equals("date")) {
+          return "@" + element.primitiveValue(); // inject the leading @
+        }
+      }
+      return element.primitiveValue(); // for debugging purposes, return the type as well
+    }
+    if (base instanceof PrimitiveType) {
+      var primitive = (PrimitiveType<?>) base;
+      return primitive.fpValue(); // return the primitive value as a string
+    }
+    return base.primitiveValue();
+  }
+
   @Test
   @DisplayName("resolveConstant returns a list of Base")
   public void resolveConstantReturnsList() throws IOException {
