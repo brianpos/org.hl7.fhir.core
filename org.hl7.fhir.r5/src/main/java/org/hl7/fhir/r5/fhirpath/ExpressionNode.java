@@ -43,8 +43,29 @@ import org.hl7.fhir.utilities.Utilities;
 public class ExpressionNode {
 
   public enum Kind {
-		Name, Function, Constant, Group, Unary
+		Name, Function, Constant, Group, Unary, Structure
 	}
+
+  /**
+   * A single element assignment within an object construction (instance selector) expression, 
+   * e.g. the <code>system : 'http://example.org/demo'</code> in <code>Coding { system : 'http://example.org/demo' }</code>.
+   * See the FHIRPath "Instance Selector/Object Creation" section (STU).
+   */
+  public static class ConstructorParam {
+    private String name;
+    private ExpressionNode value;
+    public ConstructorParam(String name, ExpressionNode value) {
+      super();
+      this.name = name;
+      this.value = value;
+    }
+    public String getName() {
+      return name;
+    }
+    public ExpressionNode getValue() {
+      return value;
+    }
+  }
 
   public enum Function {
     Custom, 
@@ -377,6 +398,7 @@ public class ExpressionNode {
 	private Base constant;
 	private Function function;
 	private List<ExpressionNode> parameters; // will be created if there is a function
+	private List<ConstructorParam> constructorParams; // will be created if this is an object construction (Structure)
 	private ExpressionNode inner;
 	private ExpressionNode group;
 	private Operation operation;
@@ -449,6 +471,26 @@ public class ExpressionNode {
 			b.append("(");
 			b.append(group.toString());
 			b.append(")");
+			break;
+		case Structure:
+			b.append(name);
+			if (constructorParams == null || constructorParams.isEmpty()) {
+				b.append(" {:}");
+			} else {
+				b.append(" { ");
+				boolean firstParam = true;
+				for (ConstructorParam p : constructorParams) {
+					if (firstParam)
+						firstParam = false;
+					else
+						b.append(", ");
+					b.append(p.getName());
+					b.append(" : ");
+					b.append(p.getValue().toString());
+				}
+				b.append(" }");
+			}
+			break;
 		}
 		if (inner != null) {
 			if (!((ExpressionNode.Kind.Function == inner.getKind()) && (ExpressionNode.Function.Item == inner.getFunction()))) {
@@ -514,6 +556,18 @@ public class ExpressionNode {
 	}
 	public List<ExpressionNode> getParameters() {
 		return parameters;
+	}
+
+	public List<ConstructorParam> getConstructorParams() {
+		if (constructorParams == null)
+			constructorParams = new ArrayList<ConstructorParam>();
+		return constructorParams;
+	}
+
+	public void addConstructorParam(String name, ExpressionNode value) {
+		if (constructorParams == null)
+			constructorParams = new ArrayList<ConstructorParam>();
+		constructorParams.add(new ConstructorParam(name, value));
 	}
 	public boolean checkName() {
 		if (!name.startsWith("$"))
@@ -625,6 +679,26 @@ public class ExpressionNode {
 			b.append('(');
 			group.write(b);
 			b.append(')');
+			break;
+		case Structure:
+			b.append(name);
+			if (constructorParams == null || constructorParams.isEmpty()) {
+				b.append(" {:}");
+			} else {
+				b.append(" { ");
+				boolean fp = true;
+				for (ConstructorParam p : constructorParams) {
+					if (fp)
+						fp = false;
+					else
+						b.append(", ");
+					b.append(p.getName());
+					b.append(" : ");
+					p.getValue().write(b);
+				}
+				b.append(" }");
+			}
+			break;
 		}
 
 		if (inner != null) {
@@ -676,6 +750,23 @@ public class ExpressionNode {
 				if (msg != null)
 					return msg;
 			}
+			break;
+
+		case Structure:
+			if (Utilities.noString(name))
+				return "No Type name provided for object construction @ "+location();
+			if (constructorParams != null) {
+				for (ConstructorParam p : constructorParams) {
+					if (Utilities.noString(p.getName()))
+						return "No element name provided in object construction @ "+location();
+					if (p.getValue() == null)
+						return "No value provided for element "+p.getName()+" in object construction @ "+location();
+					String msg = p.getValue().check();
+					if (msg != null)
+						return msg;
+				}
+			}
+			break;
 		}
 		if (inner != null) { 
 			String msg = inner.check();

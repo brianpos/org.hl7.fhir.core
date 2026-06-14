@@ -30,6 +30,7 @@ import org.hl7.fhir.r5.conformance.profile.ProfileUtilities.SourcedChildDefiniti
 import org.hl7.fhir.r5.context.ContextUtilities;
 import org.hl7.fhir.r5.context.IWorkerContext;
 import org.hl7.fhir.r5.fhirpath.ExpressionNode.CollectionStatus;
+import org.hl7.fhir.r5.fhirpath.ExpressionNode.ConstructorParam;
 import org.hl7.fhir.r5.fhirpath.ExpressionNode.Function;
 import org.hl7.fhir.r5.fhirpath.ExpressionNode.Kind;
 import org.hl7.fhir.r5.fhirpath.ExpressionNode.Operation;
@@ -58,6 +59,7 @@ import org.hl7.fhir.r5.model.Property;
 import org.hl7.fhir.r5.model.Property.PropertyMatcher;
 import org.hl7.fhir.r5.model.Quantity;
 import org.hl7.fhir.r5.model.Resource;
+import org.hl7.fhir.r5.model.ResourceFactory;
 import org.hl7.fhir.r5.model.StringType;
 import org.hl7.fhir.r5.model.StructureDefinition;
 import org.hl7.fhir.r5.model.StructureDefinition.StructureDefinitionKind;
@@ -1265,6 +1267,9 @@ public class FHIRPathEngine {
         result.setEnd(lexer.getCurrentLocation().copy());
         lexer.next();
         checkParameters(lexer, c, result, details);
+      } else if ("{".equals(lexer.getCurrent())) {
+        // FHIRPath instance selector / object construction (STU), e.g. Coding { system : 'x', code : 'y' }
+        parseStructure(lexer, result);
       } else {
         result.setKind(Kind.Name);
       }
@@ -1287,6 +1292,17 @@ public class FHIRPathEngine {
       lexer.next();
       focus.setInner(parseExpression(lexer, false));
     }
+    // FHIRPath instance selector / object construction may be namespace qualified, e.g. FHIR.Identifier { ... }.
+    // In that case the type name is parsed as a leading name (FHIR/System) with the Structure as its inner node;
+    // fold the namespace into the Structure's type name so it can be constructed directly.
+    if (focus == result && result.getKind() == Kind.Name && result.getInner() != null && result.getInner().getKind() == Kind.Structure
+        && Utilities.existsInList(result.getName(), "FHIR", "System")) {
+      ExpressionNode struct = result.getInner();
+      struct.setName(result.getName() + "." + struct.getName());
+      struct.setStart(result.getStart());
+      result = struct;
+      focus = struct;
+    }
     result.setProximal(proximal);
     if (proximal) {
       while (lexer.isOp()) {
@@ -1305,6 +1321,46 @@ public class FHIRPathEngine {
       result = wrapper;
     }
     return result;
+  }
+
+  /**
+   * Parses a FHIRPath instance selector / object construction expression (STU feature), e.g.
+   * <pre>Coding { system : 'http://example.org/demo', code : 'c1' }</pre>
+   * The leading type name has already been read into <code>result</code>; the lexer is positioned on the opening '{'.
+   * An empty object is written as <code>Type {:}</code> to distinguish it from the empty collection literal <code>{}</code>.
+   */
+  private void parseStructure(FHIRLexer lexer, ExpressionNode result) throws FHIRLexerException {
+    result.setKind(Kind.Structure);
+    lexer.next(); // consume '{'
+    if (":".equals(lexer.getCurrent())) {
+      // empty object construction: Type {:}
+      lexer.next(); // consume ':'
+    } else {
+      while (!"}".equals(lexer.getCurrent())) {
+        if (lexer.getCurrent() == null) {
+          throw lexer.error("Found end of expression expecting a \"}\" in the construction of a "+result.getName());
+        }
+        String elementName;
+        if (lexer.isFixedName()) {
+          elementName = lexer.readFixedName("Element Name");
+        } else {
+          elementName = lexer.take();
+        }
+        if (!":".equals(lexer.getCurrent())) {
+          throw lexer.error("Found "+lexer.getCurrent()+" expecting a \":\" in the construction of a "+result.getName());
+        }
+        lexer.next(); // consume ':'
+        ExpressionNode value = parseExpression(lexer, true);
+        result.addConstructorParam(elementName, value);
+        if (",".equals(lexer.getCurrent())) {
+          lexer.next();
+        } else if (!"}".equals(lexer.getCurrent())) {
+          throw lexer.error("Found "+lexer.getCurrent()+" expecting a \",\" or \"}\" in the construction of a "+result.getName());
+        }
+      }
+    }
+    result.setEnd(lexer.getCurrentLocation().copy());
+    lexer.next(); // consume '}'
   }
 
   private ExpressionNode organisePrecedence(FHIRLexer lexer, ExpressionNode node) {
@@ -1584,6 +1640,10 @@ public class FHIRPathEngine {
     case Group:
       work2 = execute(context, focus, exp.getGroup(), atEntry);
       work.addAll(work2);
+      break;
+    case Structure:
+      work.addAll(executeConstructor(context, focus, exp));
+      break;
     }
 
     if (exp.getInner() != null) {
@@ -1613,6 +1673,52 @@ public class FHIRPathEngine {
     }
     //    System.out.println("Result of {'"+exp.toString()+"'}: "+work.toString());
     return work;
+  }
+
+  /**
+   * Evaluates a FHIRPath instance selector / object construction expression (STU feature), e.g.
+   * <pre>Coding { system : 'http://example.org/demo', code : 'c1' }</pre>
+   * The object is created with the requested type and each listed element is populated by evaluating
+   * its value expression against the (single) input item. Elements whose value evaluates to an empty
+   * collection are omitted. An empty input collection yields an empty result; an input collection with
+   * more than one item is an error.
+   */
+  private List<Base> executeConstructor(ExecutionContext context, List<Base> focus, ExpressionNode exp) throws FHIRException {
+    List<Base> result = new ArrayList<Base>();
+    if (focus.isEmpty()) {
+      return result;
+    }
+    if (focus.size() > 1) {
+      throw makeException(exp, I18nConstants.FHIRPATH_NO_COLLECTION, "object construction", focus.size());
+    }
+    Base item = focus.get(0);
+    Base obj = makeConstructorObject(exp);
+    List<Base> input = new ArrayList<Base>();
+    input.add(item);
+    for (ConstructorParam p : exp.getConstructorParams()) {
+      List<Base> values = execute(changeThis(context, item), input, p.getValue(), true);
+      for (Base value : values) {
+        if (value != null) {
+          obj.setProperty(p.getName(), value);
+        }
+      }
+    }
+    result.add(obj);
+    return result;
+  }
+
+  private Base makeConstructorObject(ExpressionNode exp) throws PathEngineException {
+    String tn = exp.getName();
+    if (tn.startsWith("FHIR.")) {
+      tn = tn.substring("FHIR.".length());
+    } else if (tn.startsWith("System.")) {
+      tn = tn.substring("System.".length());
+    }
+    try {
+      return ResourceFactory.createResourceOrType(tn);
+    } catch (FHIRException e) {
+      throw makeException(exp, I18nConstants.FHIRPATH_UNKNOWN_TYPE, exp.getName(), "object construction");
+    }
   }
 
   private List<Base> executeTypeName(ExecutionContext context, List<Base> focus, ExpressionNode next, boolean atEntry) {
@@ -1658,6 +1764,24 @@ public class FHIRPathEngine {
     return new TypeDetails(CollectionStatus.SINGLETON, exp.getName());
   }
 
+  private TypeDetails executeConstructorType(ExecutionTypeContext context, TypeDetails focus, ExpressionNode exp, Set<ElementDefinition> elementDependencies) throws PathEngineException, DefinitionException {
+    // evaluate the type of each element value expression (relative to the input) for dependency tracking and error surfacing
+    for (ConstructorParam p : exp.getConstructorParams()) {
+      executeType(context, focus, p.getValue(), elementDependencies, true, true, exp);
+    }
+    String tn = exp.getName();
+    if (tn.startsWith("FHIR.")) {
+      tn = tn.substring("FHIR.".length());
+    } else if (tn.startsWith("System.")) {
+      tn = tn.substring("System.".length());
+    }
+    StructureDefinition sd = worker.fetchTypeDefinition(tn);
+    if (sd == null) {
+      throw makeException(exp, I18nConstants.FHIRPATH_UNKNOWN_TYPE, exp.getName(), "object construction");
+    }
+    return new TypeDetails(CollectionStatus.SINGLETON, sd.getUrl());
+  }
+
   private TypeDetails executeType(ExecutionTypeContext inContext, TypeDetails focus, ExpressionNode exp, Set<ElementDefinition> elementDependencies, boolean atEntry, boolean canBeNone, ExpressionNode container) throws PathEngineException, DefinitionException {
     ExecutionTypeContext context = contextForParameter(inContext);
     TypeDetails result = new TypeDetails(null);
@@ -1698,6 +1822,10 @@ public class FHIRPathEngine {
       break;
     case Group:
       result.update(executeType(context, focus, exp.getGroup(), elementDependencies, atEntry, canBeNone, exp));
+      break;
+    case Structure:
+      result.update(executeConstructorType(context, focus, exp, elementDependencies));
+      break;
     }
     exp.setTypes(result);
 
