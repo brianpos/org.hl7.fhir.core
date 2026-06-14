@@ -686,10 +686,10 @@ public class ExpressionNode {
 				b.append(" {:}");
 			} else {
 				b.append(" { ");
-				boolean fp = true;
+				boolean firstParam = true;
 				for (ConstructorParam p : constructorParams) {
-					if (fp)
-						fp = false;
+					if (firstParam)
+						firstParam = false;
 					else
 						b.append(", ");
 					b.append(p.getName());

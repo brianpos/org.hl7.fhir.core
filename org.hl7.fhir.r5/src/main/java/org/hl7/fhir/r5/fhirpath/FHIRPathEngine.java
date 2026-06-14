@@ -1693,8 +1693,7 @@ public class FHIRPathEngine {
     }
     Base item = focus.get(0);
     Base obj = makeConstructorObject(exp);
-    List<Base> input = new ArrayList<Base>();
-    input.add(item);
+    List<Base> input = Collections.singletonList(item);
     for (ConstructorParam p : exp.getConstructorParams()) {
       List<Base> values = execute(changeThis(context, item), input, p.getValue(), true);
       for (Base value : values) {
