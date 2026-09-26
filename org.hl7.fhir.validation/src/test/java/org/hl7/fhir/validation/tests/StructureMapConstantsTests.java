@@ -72,7 +72,7 @@ group ConstantsGroup(source src : Patient, target tgt : Patient) {
     context = new SimpleWorkerContext(TestingUtilities.getWorkerContext(pcm.loadPackage("hl7.fhir.r6.core", "6.0.0-snapshot1")));
 
     // also include the FML structure definition
-    var fmlPackage = pcm.loadPackage("hl7.fhir.uv.fml#dev");
+    var fmlPackage = pcm.loadPackage("hl7.fhir.uv.mapping-language#current");
     context.loadFromPackage(fmlPackage, ValidatorUtils.loaderForVersion(context.getModelContext(), fmlPackage.fhirVersion()), true);
     utils = new StructureMapTools(context);
     fpe = new FHIRPathEngine(context);
